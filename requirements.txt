@@ -3,3 +3,6 @@ numpy==2.3.3
 cvxpy==1.7.3
 pytest==8.4.2
 pyomo==6.10.0
+highspy==1.11.0
+# Note: Gurobi's Python API version should match the installed Gurobi version
+gurobipy==13.0.1
