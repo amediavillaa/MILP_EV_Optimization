@@ -1,0 +1,57 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field, asdict
+
+
+@dataclass
+class StepRecord:
+    t: int
+    actions: dict           # {port_j: amps}
+    reward: float
+    profit_delta: float
+    served: int
+    rejected: int
+    step_revenue: float = 0.0
+    step_cost: float = 0.0
+
+
+@dataclass
+class ChargaxSimResults:
+    controller_name: str
+    seed: int
+    episode_date: str
+    net_profit: float
+    total_revenue: float
+    total_cost: float
+    served_customers: int
+    rejected_customers: int
+    mean_soc_at_departure: float
+    step_log: list[StepRecord] = field(default_factory=list)
+
+    @classmethod
+    def from_final_state(
+        cls,
+        controller_name: str,
+        seed: int,
+        state,
+        step_log: list[StepRecord],
+        departures_soc: list[float],
+    ) -> ChargaxSimResults:
+        mean_soc = sum(departures_soc) / len(departures_soc) if departures_soc else 0.0
+        total_revenue = sum(r.step_revenue for r in step_log)
+        total_cost = sum(r.step_cost for r in step_log)
+        return cls(
+            controller_name=controller_name,
+            seed=seed,
+            episode_date=str(state.datetime),
+            net_profit=float(state.profit),
+            total_revenue=total_revenue,
+            total_cost=total_cost,
+            served_customers=int(state.served_customers),
+            rejected_customers=int(state.rejected_customers),
+            mean_soc_at_departure=mean_soc,
+            step_log=step_log,
+        )
+
+    def to_dict(self) -> dict:
+        return asdict(self)
