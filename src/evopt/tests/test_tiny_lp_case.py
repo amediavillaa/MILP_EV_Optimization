@@ -1,1 +1,0 @@
-raise NotImplementedError("small case not implemented yet.")

@@ -9,7 +9,7 @@ Narrative:
   Car 4 also arrives at t=1 but finds no free port → rejected.
   Car 5 arrives at t=4.
 
-  Revenue is NOT known at arrival. Instead it is earned per kWh
+  Revenue is not known at arrival. Instead it is earned per kWh
   delivered, at the sell price prevailing in each time step.  The
   optimiser therefore balances:
     - Charging cars earlier (higher sell price at t1–t2) vs.
@@ -42,15 +42,15 @@ Car summary:
 
 SAMPLE_DATA = {
     # ------------------------------------------------------------------ topology
-    "J" : 3,
-    "T" : 8,
-    "I" : 5,
+    "J" : 3,               # ports 
+    "T" : 8,               # time 
+    "I" : 5,               # cars 
 
     # ------------------------------------------------------------------ time
-    "delta_t" : 1.0,        # hours per time step
+    "delta_t" : 1.0,       # hours per time step
 
     # ------------------------------------------------------------------ grid
-    "P_max" : 20_000.0,     # W — deliberately tight to create congestion
+    "P_max" : 20_000.0,    # W — deliberately tight to create congestion
 
     # ------------------------------------------------------------------ solver
     # M_big >= max(s_cap) is a safe upper bound.
