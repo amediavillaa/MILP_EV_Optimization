@@ -2,14 +2,32 @@ from evopt.controllers.base_controller import BaseController
 
 
 class EqualShareController(BaseController):
-    """Simple baseline that splits available capacity equally across active vehicles."""
+    """Splits available grid capacity equally across all present vehicles."""
 
-    def compute_action(self, state):
-        active_vehicles = state.get("active_vehicles", [])
-        capacity = state.get("site_capacity_kw", 0.0)
+    def compute_action(self, state: dict) -> dict[int, float]:
+        present_cars = state.get("present_cars", {})
+        assignments  = state.get("assignments", {})
 
-        if not active_vehicles:
+        if not present_cars:
             return {}
 
-        share = capacity / len(active_vehicles)
-        return {vehicle_id: share for vehicle_id in active_vehicles}
+        N       = len(present_cars)
+        P_share = state["P_max"] / N       # Watts per car
+
+        actions = {}
+        for car_id, port_j in assignments.items():
+            V      = state["V"][port_j]
+            I_max  = state["I_max"][port_j]
+            car    = present_cars[car_id]
+
+            # Cap by port hardware limit
+            I_port = P_share / V
+            I_capped = min(I_port, I_max)
+
+            # Cap by energy still needed
+            energy_needed_kwh = max(0.0, car["s_target"] - car["soc_now"])
+            I_needed = energy_needed_kwh / (state["delta_t"] * V / 1000.0)
+
+            actions[port_j] = min(I_capped, I_needed)
+
+        return actions
