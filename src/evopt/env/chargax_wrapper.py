@@ -44,7 +44,10 @@ class ChargaxWrapper:
         self._next_car_id    = 0
 
     def extract_state(self, obs: dict, chargax_state) -> dict:
-        evse = obs["evses"]
+        # Real Chargax returns obs["evses"] as a list (one item per EVSE group).
+        # Unit-test mocks may pass a single EVSE object directly — handle both.
+        evse_raw = obs["evses"]
+        evse = evse_raw[0] if isinstance(evse_raw, list) else evse_raw
         t    = int(chargax_state.timestep)
 
         now_connected = {
@@ -122,7 +125,9 @@ class ChargaxWrapper:
             amps   = actions.get(port_j, 0.0)
             levels.append(discretize_amps(amps, self.I_max[port_j],
                                           self.num_discretization_levels))
+        # Chargax expects evses as a list of arrays (one per EVSE group) and
+        # batteries as an empty list when no on-site battery is configured.
         return {
-            "evses":     jnp.array(levels, dtype=jnp.int32),
-            "batteries": jnp.array([0],    dtype=jnp.int32),
+            "evses":     [jnp.array(levels, dtype=jnp.int32)],
+            "batteries": [],
         }

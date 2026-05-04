@@ -124,7 +124,8 @@ def test_price_dict_populated():
 def test_to_chargax_actions_full_charge():
     w = _make_wrapper(2)
     actions = w.to_chargax_actions({1: 32.0, 2: 16.0})
-    evse_arr = list(actions["evses"])
+    # evses is a list (one array per EVSE group); index into the first group's array
+    evse_arr = list(actions["evses"][0])
     assert evse_arr[0] == 10   # 32/32 * 10 = 10
     assert evse_arr[1] == 5    # 16/32 * 10 = 5
 
@@ -132,5 +133,5 @@ def test_to_chargax_actions_full_charge():
 def test_to_chargax_actions_missing_port_defaults_to_zero():
     w = _make_wrapper(2)
     actions = w.to_chargax_actions({1: 32.0})  # port 2 missing
-    evse_arr = list(actions["evses"])
+    evse_arr = list(actions["evses"][0])
     assert evse_arr[1] == 0
