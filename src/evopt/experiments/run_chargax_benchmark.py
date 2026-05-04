@@ -1,0 +1,67 @@
+"""
+run_chargax_benchmark.py — Run all controllers through Chargax and save results.
+
+Usage:
+    python -m evopt.experiments.run_chargax_benchmark
+    python -m evopt.experiments.run_chargax_benchmark --seeds 5 --output results/chargax
+"""
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+from chargax import Chargax
+
+from evopt.benchmarking.runner import BenchmarkRunner
+from evopt.benchmarking.storage import build_summary
+from evopt.controllers.chargax_baselines import MaxChargeController, RandomController
+from evopt.controllers.equal_share import EqualShareController
+from evopt.controllers.lp_controller import LPController
+from evopt.env.chargax_wrapper import ChargaxWrapper
+from evopt.experiments.station_configs import build_simple_station
+
+
+def main(n_seeds: int = 10, output_dir: Path = Path("results/chargax")) -> None:
+    N_PORTS  = 3
+    VOLTAGE  = 400.0
+    I_MAX    = 32.0
+    P_MAX_KW = 20.0
+
+    station = build_simple_station(
+        n_ports=N_PORTS, v=VOLTAGE, i_max=I_MAX, p_max_kw=P_MAX_KW
+    )
+    env = Chargax(
+        station=station,
+        minutes_per_timestep=5,
+        allow_discharging=False,
+        renormalize_currents=False,
+    )
+    wrapper = ChargaxWrapper(
+        n_ports=N_PORTS, v=VOLTAGE, i_max=I_MAX, p_max_kw=P_MAX_KW,
+        num_discretization_levels=10,
+        minutes_per_step=5,
+    )
+
+    runner = BenchmarkRunner(env, wrapper)
+    runner.run_benchmark(
+        controllers={
+            "milp_h12":    LPController(horizon_steps=12, solver="highs"),
+            "equal_share": EqualShareController(),
+            "max_charge":  MaxChargeController(),
+            "random":      RandomController(seed=0),
+        },
+        seeds=list(range(n_seeds)),
+        output_dir=output_dir,
+    )
+
+    df = build_summary(output_dir)
+    print(df.groupby("controller")[["net_profit", "served_customers",
+                                    "rejected_customers"]].mean().to_string())
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--seeds",  type=int, default=10)
+    parser.add_argument("--output", type=str, default="results/chargax")
+    args = parser.parse_args()
+    main(n_seeds=args.seeds, output_dir=Path(args.output))
