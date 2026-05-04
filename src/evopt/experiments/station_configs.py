@@ -12,6 +12,7 @@ def build_simple_station(
         num_chargers=n_ports,
         voltage=v,
         max_current=i_max,
+        efficiency=1.0,
     )
     return ChargingStation(
         max_kw_throughput=p_max_kw,
