@@ -91,17 +91,20 @@ class ChargaxWrapper:
             assignments[car_id] = j + 1   # 0-indexed → 1-indexed port
             self._prev_soc[j]   = soc_now  # snapshot for next departure lookup
 
-        steps_per_hour = 60 // self.minutes_per_step
-        future_buy  = [float(p) for p in obs["future_buy_prices"]]
-        future_sell = [float(p) for p in obs["future_sell_prices"]]
+        # p_buy  = grid electricity tariff (varies by hour, from Chargax market data)
+        # p_sell = customer charging fee (fixed per episode; NOT the V2G sell-back price,
+        #          which is what obs["future_sell_prices"] contains)
+        steps_per_hour   = 60 // self.minutes_per_step
+        future_buy       = [float(p) for p in obs["future_buy_prices"]]
+        customer_price   = float(chargax_state.elec_customer_sell_price)
 
         p_buy: dict[int, float] = {}
         p_sell: dict[int, float] = {}
-        for h, (bp, sp) in enumerate(zip(future_buy, future_sell)):
+        for h, bp in enumerate(future_buy):
             for s in range(steps_per_hour):
                 step = t + h * steps_per_hour + s
                 p_buy[step]  = bp
-                p_sell[step] = sp
+                p_sell[step] = customer_price
 
         return {
             "t":            t,

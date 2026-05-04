@@ -15,12 +15,14 @@ class MockEVSE:
 
 
 class MockState:
-    def __init__(self, timestep=0, profit=0.0, served=0, rejected=0, dt="2023-01-01"):
-        self.timestep         = timestep
-        self.profit           = profit
-        self.served_customers = served
-        self.rejected_customers = rejected
-        self.datetime         = dt
+    def __init__(self, timestep=0, profit=0.0, served=0, rejected=0, dt="2023-01-01",
+                 customer_price=0.75):
+        self.timestep                  = timestep
+        self.profit                    = profit
+        self.served_customers          = served
+        self.rejected_customers        = rejected
+        self.datetime                  = dt
+        self.elec_customer_sell_price  = customer_price
 
 
 def _make_obs(evse, buy_prices=None, sell_prices=None):
@@ -116,8 +118,10 @@ def test_p_max_converted_to_watts():
 def test_price_dict_populated():
     w = _make_wrapper(1)
     evse = MockEVSE(1, [False], [0.0], [60.0], [0.0], [0.0])
-    state = w.extract_state(_make_obs(evse, buy_prices=[0.20] * 6), MockState(0))
+    state = w.extract_state(_make_obs(evse, buy_prices=[0.20] * 6),
+                            MockState(0, customer_price=0.75))
     assert state["p_buy"][0] == pytest.approx(0.20)
+    assert state["p_sell"][0] == pytest.approx(0.75)  # customer fee, not V2G price
     assert 0 in state["p_buy"]
 
 
