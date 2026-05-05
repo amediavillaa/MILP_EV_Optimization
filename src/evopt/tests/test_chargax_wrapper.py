@@ -118,10 +118,10 @@ def test_p_max_converted_to_watts():
 def test_price_dict_populated():
     w = _make_wrapper(1)
     evse = MockEVSE(1, [False], [0.0], [60.0], [0.0], [0.0])
-    state = w.extract_state(_make_obs(evse, buy_prices=[0.20] * 6),
-                            MockState(0, customer_price=0.75))
+    state = w.extract_state(_make_obs(evse, buy_prices=[0.20] * 6, sell_prices=[0.24] * 6),
+                            MockState(0))
     assert state["p_buy"][0] == pytest.approx(0.20)
-    assert state["p_sell"][0] == pytest.approx(0.75)  # customer fee, not V2G price
+    assert state["p_sell"][0] == pytest.approx(0.24)  # V2G sell-back price
     assert 0 in state["p_buy"]
 
 

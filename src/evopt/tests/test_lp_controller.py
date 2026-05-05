@@ -48,25 +48,12 @@ def test_with_one_car_returns_nonempty_actions():
     assert actions[1] >= 0.0
 
 
-def test_re_solves_at_horizon_boundary():
+def test_re_solves_every_timestep():
     ctrl = LPController(horizon_steps=12, solver="highs")
     state0 = _make_state(0)
     ctrl.compute_action(state0)
-    first_plan = ctrl._plan
-
-    state12 = _make_state(12)
-    ctrl.compute_action(state12)
-    second_plan = ctrl._plan
-
-    assert first_plan is not second_plan
-
-
-def test_holds_plan_between_solves():
-    ctrl = LPController(horizon_steps=12, solver="highs")
-    state0 = _make_state(0)
-    ctrl.compute_action(state0)
-    plan_after_t0 = ctrl._plan
+    plan_t0 = ctrl._plan
 
     state1 = _make_state(1)
     ctrl.compute_action(state1)
-    assert ctrl._plan is plan_after_t0   # same object, not re-solved
+    assert ctrl._plan is not plan_t0   # new plan object each timestep

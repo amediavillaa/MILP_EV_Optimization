@@ -17,7 +17,8 @@ class BenchmarkRunner:
         self.env     = env
         self.wrapper = wrapper
 
-    def run_episode(self, controller: BaseController, seed: int) -> ChargaxSimResults:
+    def run_episode(self, controller: BaseController, seed: int,
+                    name: str | None = None) -> ChargaxSimResults:
         key          = jax.random.PRNGKey(seed)
         obs, state   = self.env.reset_env(key)
 
@@ -64,7 +65,7 @@ class BenchmarkRunner:
             done = bool(timestep.terminated) or bool(timestep.truncated)
 
         return ChargaxSimResults.from_final_state(
-            controller_name = controller.__class__.__name__,
+            controller_name = name if name is not None else controller.__class__.__name__,
             seed            = seed,
             state           = state,
             step_log        = step_log,
@@ -80,5 +81,5 @@ class BenchmarkRunner:
         output_dir = Path(output_dir)
         for name, ctrl in controllers.items():
             for seed in seeds:
-                result = self.run_episode(ctrl, seed)
+                result = self.run_episode(ctrl, seed, name=name)
                 storage.save(result, output_dir / name / f"seed_{seed}.json")
