@@ -51,6 +51,13 @@ class ChargaxWrapper:
         self._prev_soc: dict[int, float]      = {}
         self._next_car_id: int                = 0
 
+        if self.v_bess is not None:
+            if self.I_high is None or self.I_low is None or self.p_bess_max_kw is None or self.socb_max is None:
+                raise ValueError(
+                    "When v_bess is set, I_high, I_low, p_bess_max_kw, and socb_max "
+                    "must all be provided."
+                )
+
     def reset(self) -> None:
         self._charger_to_car = {}
         self._prev_connected = set()
@@ -69,6 +76,9 @@ class ChargaxWrapper:
         departures   = self._prev_connected - now_connected
         new_arrivals = now_connected - self._prev_connected
 
+        # Always process departures before arrivals (prevents same-step ID reuse).
+        # Use the SOC captured at the previous step, since the current obs for a
+        # departed charger reflects post-disconnect (stale/zero) values.
         departed_socs: list[float] = []
         for j in sorted(departures):
             departed_socs.append(self._prev_soc.get(j, float(evse.car_battery_now_kw[j])))
@@ -98,12 +108,14 @@ class ChargaxWrapper:
                 "t_max":    t_max,
             }
             assignments[car_id] = j + 1
-            self._prev_soc[j]   = soc_now
+            self._prev_soc[j]   = soc_now  # snapshot for next departure lookup
 
         steps_per_hour = 60 // self.minutes_per_step
         future_buy  = [float(p) for p in obs["future_buy_prices"]]
         future_sell = [float(p) for p in obs["future_sell_prices"]]
 
+        # p_buy  = grid electricity tariff (varies by hour, from Chargax market data)
+        # p_sell = V2G sell-back price (varies by hour; grid arbitrage mode)
         p_buy: dict[int, float] = {}
         p_sell: dict[int, float] = {}
         for h, (bp, sp) in enumerate(zip(future_buy, future_sell)):

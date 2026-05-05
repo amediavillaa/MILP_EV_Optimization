@@ -249,3 +249,12 @@ def test_to_chargax_actions_no_bess_returns_empty_batteries():
     w = _make_wrapper(2)   # no BESS
     result = w.to_chargax_actions({1: 32.0, 2: 16.0})
     assert result["batteries"] == []
+
+
+def test_bess_wrapper_requires_all_params_when_v_bess_set():
+    import pytest
+    with pytest.raises(ValueError, match="I_high, I_low, p_bess_max_kw, and socb_max"):
+        ChargaxWrapper(
+            n_ports=2, v=400.0, i_max=32.0, p_max_kw=20.0,
+            v_bess=400.0,   # set but missing I_high, I_low, p_bess_max_kw, socb_max
+        )
