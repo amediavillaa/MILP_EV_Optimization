@@ -209,40 +209,41 @@ def test_extract_state_without_bess_has_no_bess_fields():
 def test_to_chargax_actions_bess_discharging():
     # LP convention: positive bess_net_amps = discharging
     # bess_net_amps = 25 A at 400 V = 10 kW (full discharge)
-    # Chargax: positive = charging → negate → level = -10
+    # Chargax level = round((1 - 10/10) * 10) = 0  (max discharge in [0, 20] range)
     w = _make_bess_wrapper(2)
     actions = {1: 0.0, 2: 0.0, 3: 25.0}   # port 3 = BESS (J+1 for J=2)
     result = w.to_chargax_actions(actions)
-    batt_level = int(result["batteries"][0][0])
-    assert batt_level == -10   # full discharge
+    batt_level = int(result["batteries"][0])
+    assert batt_level == 0   # full discharge (Chargax level 0 of 20)
 
 
 def test_to_chargax_actions_bess_charging():
     # bess_net_amps = -25 A (charging in LP terms; I_dis=0, I_ch=25)
-    # bess_power_kw = -25 * 400 / 1000 = -10 kW (negative = charge)
-    # level = round(-(-10) / 10 * 10) = +10
+    # bess_power_kw = -25 * 400 / 1000 = -10 kW (negative = charge in LP)
+    # Chargax level = round((1 - (-10)/10) * 10) = round(2*10) = 20
     w = _make_bess_wrapper(2)
     actions = {1: 0.0, 2: 0.0, 3: -25.0}  # negative → charging in LP terms
     result = w.to_chargax_actions(actions)
-    batt_level = int(result["batteries"][0][0])
-    assert batt_level == 10   # full charge
+    batt_level = int(result["batteries"][0])
+    assert batt_level == 20   # full charge (Chargax level 20 of 20)
 
 
 def test_to_chargax_actions_bess_idle():
+    # No BESS action → bess_net_amps=0 → level = round((1-0)*10) = 10 (idle)
     w = _make_bess_wrapper(2)
     actions = {1: 32.0, 2: 16.0}   # no BESS key
     result = w.to_chargax_actions(actions)
-    batt_level = int(result["batteries"][0][0])
-    assert batt_level == 0
+    batt_level = int(result["batteries"][0])
+    assert batt_level == 10   # idle (Chargax level 10 of 20)
 
 
 def test_to_chargax_actions_bess_level_clamped():
-    # Very large discharge beyond p_bess_max_kw should clamp to -num_levels
+    # Very large discharge beyond p_bess_max_kw should clamp to 0 (max discharge)
     w = _make_bess_wrapper(2)
     actions = {3: 1000.0}   # unrealistically large
     result = w.to_chargax_actions(actions)
-    batt_level = int(result["batteries"][0][0])
-    assert batt_level == -10   # clamped
+    batt_level = int(result["batteries"][0])
+    assert batt_level == 0   # clamped to max discharge
 
 
 def test_to_chargax_actions_no_bess_returns_empty_batteries():

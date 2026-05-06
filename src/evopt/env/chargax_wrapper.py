@@ -153,7 +153,15 @@ class ChargaxWrapper:
         """Convert {port_j (1-indexed): amps} to Chargax MultiDiscrete action dict.
 
         Port J+1 is the BESS. LP convention: positive bess_net_amps = discharging.
-        Chargax convention: positive battery level = charging. Signs are negated.
+        Chargax convention: battery level is an integer in [0, 2*N] where N =
+        num_discretization_levels; level N = idle, level 0 = max discharge, level 2*N
+        = max charge.  Chargax internally computes:
+            desired_output_kw = (level / N - 1) * max_throughput_kw
+        so charging requires level > N and discharging requires level < N.
+
+        Mapping from LP power (positive = discharge) to Chargax level:
+            level = round((1 - bess_power_kw / p_bess_max_kw) * N)
+        clamped to [0, 2*N].
         """
         levels = []
         for j in range(self.J):
@@ -165,10 +173,9 @@ class ChargaxWrapper:
         if self.v_bess is not None:
             bess_net_amps = actions.get(self.J + 1, 0.0)
             bess_power_kw = bess_net_amps * self.v_bess / 1000.0   # positive = discharge
-            level = round(-bess_power_kw / self.p_bess_max_kw * self.num_discretization_levels)
-            level = max(-self.num_discretization_levels,
-                        min(self.num_discretization_levels, level))
-            batteries = [jnp.array([level], dtype=jnp.int32)]
+            level = round((1 - bess_power_kw / self.p_bess_max_kw) * self.num_discretization_levels)
+            level = max(0, min(2 * self.num_discretization_levels, level))
+            batteries = [jnp.array(level, dtype=jnp.int32)]
         else:
             batteries = []
 
