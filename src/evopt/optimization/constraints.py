@@ -1,308 +1,178 @@
 """
-constraints.py — Constraint sets for EV charging MILP models
-=============================================================
-add_offline_constraints(m)
-    Adds all constraints for the full offline MILP.
-    Reads exclusively from Pyomo params on m — no extra arguments needed.
+constraints.py — Constraint sets for EV charging LP models
+===========================================================
+add_offline_constraints(m, data, j_bess)
+    C1  EV port current upper bound
+    C2  BESS current bounds (SoC-dependent ratios)
+    C3  Grid power cap
+    C5  BESS SoC dynamics
+    C6  BESS SoC bounds
+    C7  Car SoC dynamics
+    C8  Car SoC bounds
+    C9  Car charging power limit (SoC-dependent)
+    C10 Occupancy enforcement
 
-    C1  SoC dynamics
-    C2  McCormick linearisation  phi[i,j,t] = x[i,j,t] * I_charge[j,t]
-    C3  Departure condition      delta flips when s >= s_target
-    C4  Occupancy                linked to assignment y and departure delta
-    C5  Port capacity            at most one car per port per step
-    C6  FCFS assignment          y variables + must-assign-if-free
-    C7  Current → occupied ports I_charge = 0 on empty ports
-    C8  Grid power cap
-    C9  SoC bounds
-
-add_rolling_constraints(m, data, assignments, soc_now, t_start)
-    Adds all constraints for one rolling MPC step.
-    Uses Python dicts (data, assignments, soc_now) because port assignment
-    is fixed externally and not stored as a Pyomo param.
-    Omits C6 (no assignment decisions) and C9's pre-arrival guard
-    (all cars are already present at t_start).
-
-    C1  SoC dynamics
-    C2  McCormick linearisation  phi[i,t] = x[i,t] * I_charge[assign[i],t]
-    C3  Departure condition
-    C4  Occupancy
-    C5  Port capacity
-    C6  Current → occupied ports
-    C7  Grid power cap
-    C8  SoC bounds
+add_rolling_constraints(m, data, assignments, soc_now, socb_now, t_start, j_bess)
+    Same constraint set; window is m.WIN; warm-started from soc_now / socb_now.
 """
 
 from pyomo.environ import Constraint, value
 
 
-# ---------------------------------------------------------------------------
-# Offline constraints
-# ---------------------------------------------------------------------------
+def add_offline_constraints(m, data: dict, j_bess: int) -> None:
 
-def add_offline_constraints(m) -> None:
+    # C1 — EV port current upper bound
+    def ev_current_ub_rule(m, j, t):
+        return m.I_ev[j, t] <= m.I_max[j]
+    m.ev_current_ub = Constraint(m.J_ev, m.T, rule=ev_current_ub_rule)
 
-    # ------------------------------------------------------------------
-    # C1 — SoC dynamics
-    # ------------------------------------------------------------------
-    def soc_dynamics_rule(m, i, t):
-        energy_in = sum(
-            m.phi[i, j, t] * m.V[j] * (m.delta_t / 1000.0)
-            for j in m.J
-        )
-        if t == value(m.arr[i]):
-            return m.s[i, t] == m.s_init[i] + energy_in
-        elif t > value(m.arr[i]):
-            return m.s[i, t] == m.s[i, t - 1] + energy_in
-        else:
-            return m.s[i, t] == m.s_init[i]
+    # C2 — BESS current bounds (SoC-dependent ratios)
+    def bess_ch_ub_rule(m, t):
+        return m.I_bess_ch[t] <= data["r_bess_ch"][t] * m.I_high
+    def bess_dis_ub_rule(m, t):
+        return m.I_bess_dis[t] <= data["r_bess_dis"][t] * m.I_low
+    m.bess_ch_ub  = Constraint(m.T, rule=bess_ch_ub_rule)
+    m.bess_dis_ub = Constraint(m.T, rule=bess_dis_ub_rule)
 
-    m.soc_dynamics = Constraint(m.I, m.T, rule=soc_dynamics_rule)
-
-    # ------------------------------------------------------------------
-    # C2 — McCormick linearisation: phi[i,j,t] = x[i,j,t] * I_charge[j,t]
-    # ------------------------------------------------------------------
-    def phi_ub_x_rule(m, i, j, t):
-        return m.phi[i, j, t] <= m.I_max[j] * m.x[i, j, t]
-
-    def phi_ub_I_rule(m, i, j, t):
-        return m.phi[i, j, t] <= m.I_charge[j, t]
-
-    def phi_lb_rule(m, i, j, t):
-        return m.phi[i, j, t] >= m.I_charge[j, t] - m.I_max[j] * (1 - m.x[i, j, t])
-
-    m.phi_ub_x = Constraint(m.I, m.J, m.T, rule=phi_ub_x_rule)
-    m.phi_ub_I = Constraint(m.I, m.J, m.T, rule=phi_ub_I_rule)
-    m.phi_lb   = Constraint(m.I, m.J, m.T, rule=phi_lb_rule)
-
-    # ------------------------------------------------------------------
-    # C3 — Departure condition
-    # ------------------------------------------------------------------
-    def depart_lb_rule(m, i, t):
-        return m.s[i, t] >= m.s_target[i] * m.delta[i, t]
-
-    def depart_ub_rule(m, i, t):
-        return m.s[i, t] <= m.s_target[i] - m.epsilon + m.M_big * m.delta[i, t]
-
-    def depart_monotone_rule(m, i, t):
-        if t == 1:
-            return Constraint.Skip
-        return m.delta[i, t] >= m.delta[i, t - 1]
-
-    def depart_before_arrival_rule(m, i, t):
-        if t < value(m.arr[i]):
-            return m.delta[i, t] == 0
-        return Constraint.Skip
-
-    m.depart_lb         = Constraint(m.I, m.T, rule=depart_lb_rule)
-    m.depart_ub         = Constraint(m.I, m.T, rule=depart_ub_rule)
-    m.depart_monotone   = Constraint(m.I, m.T, rule=depart_monotone_rule)
-    m.depart_before_arr = Constraint(m.I, m.T, rule=depart_before_arrival_rule)
-
-    # ------------------------------------------------------------------
-    # C4 — Occupancy linked to assignment and departure
-    # ------------------------------------------------------------------
-    def occ_assignment_rule(m, i, j, t):
-        return m.x[i, j, t] <= m.y[i, j]
-
-    def occ_after_depart_rule(m, i, j, t):
-        if t == 1:
-            return Constraint.Skip
-        return m.x[i, j, t] <= 1 - m.delta[i, t - 1]
-
-    def occ_before_arrival_rule(m, i, j, t):
-        if t < value(m.arr[i]):
-            return m.x[i, j, t] == 0
-        return Constraint.Skip
-
-    def occ_presence_rule(m, i, t):
-        if t < value(m.arr[i]):
-            return Constraint.Skip
-        assigned      = sum(m.y[i, j] for j in m.J)
-        present       = sum(m.x[i, j, t] for j in m.J)
-        departed_prev = 0 if t == 1 else m.delta[i, t - 1]
-        return present >= assigned - departed_prev
-
-    m.occ_assignment   = Constraint(m.I, m.J, m.T, rule=occ_assignment_rule)
-    m.occ_after_depart = Constraint(m.I, m.J, m.T, rule=occ_after_depart_rule)
-    m.occ_before_arr   = Constraint(m.I, m.J, m.T, rule=occ_before_arrival_rule)
-    m.occ_presence     = Constraint(m.I, m.T,      rule=occ_presence_rule)
-
-    # ------------------------------------------------------------------
-    # C5 — Port capacity: at most one car per port per time step
-    # ------------------------------------------------------------------
-    def port_capacity_rule(m, j, t):
-        return sum(m.x[i, j, t] for i in m.I) <= 1
-
-    m.port_capacity = Constraint(m.J, m.T, rule=port_capacity_rule)
-
-    # ------------------------------------------------------------------
-    # C6 — FCFS assignment
-    # ------------------------------------------------------------------
-    def one_port_rule(m, i):
-        return sum(m.y[i, j] for j in m.J) <= 1
-
-    def fcfs_rule(m, i, ip, j):
-        t_before_ip = value(m.arr[ip]) - 1
-        if t_before_ip < 1:
-            return Constraint.Skip
-        return m.y[ip, j] <= m.delta[i, t_before_ip] + (1 - m.y[i, j])
-
-    def must_assign_if_free_rule(m, i):
-        t_arr   = value(m.arr[i])
-        n_ports = len(list(m.J))
-        occupied = sum(
-            m.x[ip, j, t_arr]
-            for ip in m.I if ip != i
-            for j in m.J
-        )
-        return n_ports * sum(m.y[i, j] for j in m.J) + occupied >= n_ports
-
-    m.one_port            = Constraint(m.I,              rule=one_port_rule)
-    m.fcfs                = Constraint(m.FCFS_pairs, m.J, rule=fcfs_rule)
-    m.must_assign_if_free = Constraint(m.I,              rule=must_assign_if_free_rule)
-
-    # ------------------------------------------------------------------
-    # C7 — Current only flows to occupied ports
-    # ------------------------------------------------------------------
-    def current_occupied_rule(m, j, t):
-        return m.I_charge[j, t] <= m.I_max[j] * sum(m.x[i, j, t] for i in m.I)
-
-    m.current_occupied = Constraint(m.J, m.T, rule=current_occupied_rule)
-
-    # ------------------------------------------------------------------
-    # C8 — Grid power cap
-    # ------------------------------------------------------------------
+    # C3 — Grid power cap
     def grid_cap_rule(m, t):
-        return sum(m.I_charge[j, t] * m.V[j] for j in m.J) <= m.P_max
-
+        ev_power   = sum(m.I_ev[j, t] * m.V[j] for j in m.J_ev)
+        bess_power = (m.I_bess_ch[t] - m.I_bess_dis[t]) * m.V[j_bess]
+        return ev_power + bess_power <= m.P_max
     m.grid_cap = Constraint(m.T, rule=grid_cap_rule)
 
-    # ------------------------------------------------------------------
-    # C9 — SoC bounds
-    # ------------------------------------------------------------------
-    def soc_lb_rule(m, i, t):
-        if t < value(m.arr[i]):
+    # C5 — BESS SoC dynamics
+    def bess_soc_rule(m, t):
+        net_in = (m.I_bess_ch[t] - m.I_bess_dis[t]) * m.V[j_bess] \
+                 * (m.delta_t / 1000.0)
+        if t == 1:
+            return m.SoCB[t] == m.SoCB_init + net_in
+        return m.SoCB[t] == m.SoCB[t - 1] + net_in
+    m.bess_soc = Constraint(m.T, rule=bess_soc_rule)
+
+    # C6 — BESS SoC bounds
+    def bess_soc_lb_rule(m, t):
+        return m.SoCB[t] >= m.SoCB_min
+    def bess_soc_ub_rule(m, t):
+        return m.SoCB[t] <= m.SoCB_max
+    m.bess_soc_lb = Constraint(m.T, rule=bess_soc_lb_rule)
+    m.bess_soc_ub = Constraint(m.T, rule=bess_soc_ub_rule)
+
+    # C7 — Car SoC dynamics
+    def car_soc_rule(m, i, t):
+        j         = data["assignments"][i]
+        energy_in = m.I_ev[j, t] * m.V[j] * (m.delta_t / 1000.0)
+        if t < data["arr"][i]:
+            return m.soc_car[i, t] == data["s_init"][i]
+        elif t == data["arr"][i]:
+            return m.soc_car[i, t] == data["s_init"][i] + energy_in
+        elif t <= data["dep"][i]:
+            return m.soc_car[i, t] == m.soc_car[i, t - 1] + energy_in
+        else:
+            return m.soc_car[i, t] == m.soc_car[i, t - 1]
+    m.car_soc = Constraint(m.I, m.T, rule=car_soc_rule)
+
+    # C8 — Car SoC bounds
+    def car_soc_lb_rule(m, i, t):
+        return m.soc_car[i, t] >= data["s_min"][i]
+    def car_soc_ub_rule(m, i, t):
+        return m.soc_car[i, t] <= data["s_cap"][i]
+    m.car_soc_lb = Constraint(m.I, m.T, rule=car_soc_lb_rule)
+    m.car_soc_ub = Constraint(m.I, m.T, rule=car_soc_ub_rule)
+
+    # C9 — Car charging power limit (SoC-dependent)
+    def car_power_limit_rule(m, i, t):
+        if t < data["arr"][i] or t > data["dep"][i]:
             return Constraint.Skip
-        return m.s[i, t] >= m.s_init[i]
+        j = data["assignments"][i]
+        return m.I_ev[j, t] * m.V[j] <= data["r_car"][i, t] * data["P_car_max"][i]
+    m.car_power_limit = Constraint(m.I, m.T, rule=car_power_limit_rule)
 
-    def soc_ub_rule(m, i, t):
-        return m.s[i, t] <= m.s_cap[i]
+    # C10 — Occupancy enforcement: no current on empty ports
+    def occupancy_rule(m, j, t):
+        if value(m.z[j, t]) == 0:
+            return m.I_ev[j, t] == 0
+        return Constraint.Skip
+    m.occupancy = Constraint(m.J_ev, m.T, rule=occupancy_rule)
 
-    m.soc_lb = Constraint(m.I, m.T, rule=soc_lb_rule)
-    m.soc_ub = Constraint(m.I, m.T, rule=soc_ub_rule)
-
-
-# ---------------------------------------------------------------------------
-# Rolling-horizon constraints (single MPC step)
-# ---------------------------------------------------------------------------
 
 def add_rolling_constraints(
     m,
     data:        dict,
     assignments: dict,   # {car_i: port_j}
     soc_now:     dict,   # {car_i: float}
+    socb_now:    float,
     t_start:     int,
+    j_bess:      int,
 ) -> None:
-    cars = sorted(assignments.keys())
 
-    # ------------------------------------------------------------------
-    # C1 — SoC dynamics  (soc_now is the live state entering t_start)
-    # ------------------------------------------------------------------
-    def soc_dynamics_rule(m, i, t):
-        energy_in = m.phi[i, t] * data["V"][assignments[i]] * (data["delta_t"] / 1000.0)
-        if t == t_start:
-            return m.s[i, t] == soc_now[i] + energy_in
-        return m.s[i, t] == m.s[i, t - 1] + energy_in
+    # C1 — EV port current upper bound
+    def ev_current_ub_rule(m, j, t):
+        return m.I_ev[j, t] <= m.I_max[j]
+    m.ev_current_ub = Constraint(m.J_ev, m.WIN, rule=ev_current_ub_rule)
 
-    m.soc_dynamics = Constraint(m.I, m.WIN, rule=soc_dynamics_rule)
+    # C2 — BESS current bounds
+    def bess_ch_ub_rule(m, t):
+        return m.I_bess_ch[t] <= data["r_bess_ch"][t] * value(m.I_high)
+    def bess_dis_ub_rule(m, t):
+        return m.I_bess_dis[t] <= data["r_bess_dis"][t] * value(m.I_low)
+    m.bess_ch_ub  = Constraint(m.WIN, rule=bess_ch_ub_rule)
+    m.bess_dis_ub = Constraint(m.WIN, rule=bess_dis_ub_rule)
 
-    # ------------------------------------------------------------------
-    # C2 — McCormick linearisation: phi[i,t] = x[i,t] * I_charge[assign[i],t]
-    # ------------------------------------------------------------------
-    def phi_ub_x_rule(m, i, t):
-        return m.phi[i, t] <= data["I_max"][assignments[i]] * m.x[i, t]
-
-    def phi_ub_I_rule(m, i, t):
-        return m.phi[i, t] <= m.I_charge[assignments[i], t]
-
-    def phi_lb_rule(m, i, t):
-        return m.phi[i, t] >= m.I_charge[assignments[i], t] - data["I_max"][assignments[i]] * (1 - m.x[i, t])
-
-    m.phi_ub_x = Constraint(m.I, m.WIN, rule=phi_ub_x_rule)
-    m.phi_ub_I = Constraint(m.I, m.WIN, rule=phi_ub_I_rule)
-    m.phi_lb   = Constraint(m.I, m.WIN, rule=phi_lb_rule)
-
-    # ------------------------------------------------------------------
-    # C3 — Departure condition
-    # ------------------------------------------------------------------
-    def depart_lb_rule(m, i, t):
-        return m.s[i, t] >= m.s_target[i] * m.delta[i, t]
-
-    def depart_ub_rule(m, i, t):
-        return m.s[i, t] <= m.s_target[i] - m.epsilon + m.M_big * m.delta[i, t]
-
-    def depart_monotone_rule(m, i, t):
-        if t == t_start:
-            return Constraint.Skip
-        return m.delta[i, t] >= m.delta[i, t - 1]
-
-    m.depart_lb       = Constraint(m.I, m.WIN, rule=depart_lb_rule)
-    m.depart_ub       = Constraint(m.I, m.WIN, rule=depart_ub_rule)
-    m.depart_monotone = Constraint(m.I, m.WIN, rule=depart_monotone_rule)
-
-    # ------------------------------------------------------------------
-    # C4 — Occupancy: all cars present at t_start, stay until departure
-    # ------------------------------------------------------------------
-    def occ_after_depart_rule(m, i, t):
-        if t == t_start:
-            return Constraint.Skip
-        return m.x[i, t] <= 1 - m.delta[i, t - 1]
-
-    def occ_presence_rule(m, i, t):
-        departed_prev = 0 if t == t_start else m.delta[i, t - 1]
-        return m.x[i, t] >= 1 - departed_prev
-
-    m.occ_after_depart = Constraint(m.I, m.WIN, rule=occ_after_depart_rule)
-    m.occ_presence     = Constraint(m.I, m.WIN, rule=occ_presence_rule)
-
-    # ------------------------------------------------------------------
-    # C5 — Port capacity: at most one car per port per time step
-    # ------------------------------------------------------------------
-    def port_capacity_rule(m, j, t):
-        cars_on_j = [i for i in cars if assignments[i] == j]
-        if not cars_on_j:
-            return Constraint.Skip
-        return sum(m.x[i, t] for i in cars_on_j) <= 1
-
-    m.port_capacity = Constraint(m.J, m.WIN, rule=port_capacity_rule)
-
-    # ------------------------------------------------------------------
-    # C6 — Current only flows to occupied ports
-    # ------------------------------------------------------------------
-    def current_occupied_rule(m, j, t):
-        cars_on_j = [i for i in cars if assignments[i] == j]
-        if not cars_on_j:
-            return m.I_charge[j, t] == 0
-        return m.I_charge[j, t] <= data["I_max"][j] * sum(m.x[i, t] for i in cars_on_j)
-
-    m.current_occupied = Constraint(m.J, m.WIN, rule=current_occupied_rule)
-
-    # ------------------------------------------------------------------
-    # C7 — Grid power cap
-    # ------------------------------------------------------------------
+    # C3 — Grid power cap
     def grid_cap_rule(m, t):
-        return sum(m.I_charge[j, t] * data["V"][j] for j in m.J) <= data["P_max"]
-
+        ev_power   = sum(m.I_ev[j, t] * m.V[j] for j in m.J_ev)
+        bess_power = (m.I_bess_ch[t] - m.I_bess_dis[t]) * m.V[j_bess]
+        return ev_power + bess_power <= m.P_max
     m.grid_cap = Constraint(m.WIN, rule=grid_cap_rule)
 
-    # ------------------------------------------------------------------
-    # C8 — SoC bounds (charging only: SoC cannot fall below entry value)
-    # ------------------------------------------------------------------
-    def soc_lb_rule(m, i, t):
-        return m.s[i, t] >= soc_now[i]
+    # C5 — BESS SoC dynamics (warm-started from socb_now)
+    def bess_soc_rule(m, t):
+        net_in = (m.I_bess_ch[t] - m.I_bess_dis[t]) * m.V[j_bess] \
+                 * (m.delta_t / 1000.0)
+        if t == t_start:
+            return m.SoCB[t] == socb_now + net_in
+        return m.SoCB[t] == m.SoCB[t - 1] + net_in
+    m.bess_soc = Constraint(m.WIN, rule=bess_soc_rule)
 
-    def soc_ub_rule(m, i, t):
-        return m.s[i, t] <= m.s_cap[i]
+    # C6 — BESS SoC bounds
+    def bess_soc_lb_rule(m, t):
+        return m.SoCB[t] >= m.SoCB_min
+    def bess_soc_ub_rule(m, t):
+        return m.SoCB[t] <= m.SoCB_max
+    m.bess_soc_lb = Constraint(m.WIN, rule=bess_soc_lb_rule)
+    m.bess_soc_ub = Constraint(m.WIN, rule=bess_soc_ub_rule)
 
-    m.soc_lb = Constraint(m.I, m.WIN, rule=soc_lb_rule)
-    m.soc_ub = Constraint(m.I, m.WIN, rule=soc_ub_rule)
+    # C7 — Car SoC dynamics (warm-started from soc_now)
+    def car_soc_rule(m, i, t):
+        j         = assignments[i]
+        energy_in = m.I_ev[j, t] * m.V[j] * (m.delta_t / 1000.0)
+        if t == t_start:
+            return m.soc_car[i, t] == soc_now[i] + energy_in
+        if t <= data["dep"][i]:
+            return m.soc_car[i, t] == m.soc_car[i, t - 1] + energy_in
+        return m.soc_car[i, t] == m.soc_car[i, t - 1]
+    m.car_soc = Constraint(m.I, m.WIN, rule=car_soc_rule)
+
+    # C8 — Car SoC bounds
+    def car_soc_lb_rule(m, i, t):
+        return m.soc_car[i, t] >= m.s_min[i]
+    def car_soc_ub_rule(m, i, t):
+        return m.soc_car[i, t] <= m.s_cap[i]
+    m.car_soc_lb = Constraint(m.I, m.WIN, rule=car_soc_lb_rule)
+    m.car_soc_ub = Constraint(m.I, m.WIN, rule=car_soc_ub_rule)
+
+    # C9 — Car charging power limit (SoC-dependent)
+    def car_power_limit_rule(m, i, t):
+        if t > data["dep"][i]:
+            return Constraint.Skip
+        j = assignments[i]
+        return m.I_ev[j, t] * m.V[j] <= data["r_car"][i, t] * data["P_car_max"][i]
+    m.car_power_limit = Constraint(m.I, m.WIN, rule=car_power_limit_rule)
+
+    # C10 — Occupancy enforcement
+    def occupancy_rule(m, j, t):
+        if value(m.z[j, t]) == 0:
+            return m.I_ev[j, t] == 0
+        return Constraint.Skip
+    m.occupancy = Constraint(m.J_ev, m.WIN, rule=occupancy_rule)
