@@ -47,18 +47,21 @@ class LPController(BaseController):
         if not state["present_cars"]:
             return {}
 
-        if self._plan is None or t % self.horizon_steps == 0:
+        if not self._plan or t % self.horizon_steps == 0:
             self._plan = self._solve(state)
 
         return self._plan.get(t, {})
 
     def _build_lp_data(self, state: dict) -> dict:
-        T_max = 24 * 60 // self.minutes_per_step - 1   # 287 for 5-min steps
+        T_max = 24 * 60 // self.minutes_per_step - 1   # assumes single-day planning epoch
 
         t           = state["t"]
         J           = state["J"]
-        cars        = list(state["present_cars"].keys())
         assignments = state["assignments"]
+        # Only consider cars that have a port assignment; unassigned cars are
+        # excluded so P_car_max can be computed safely. build_rolling_model
+        # returns None when the resulting car list is empty.
+        cars        = [cid for cid in state["present_cars"] if cid in assignments]
 
         t_end  = min(t + self.horizon_steps - 1, T_max)
         window = range(t, t_end + 1)

@@ -111,3 +111,12 @@ def test_build_lp_data_bess_port_in_V():
     J = state["J"]
     assert (J + 1) in data["V"]
     assert data["V"][J + 1] == pytest.approx(ctrl.v_bess)
+
+
+def test_empty_actions_when_assignments_empty():
+    """build_rolling_model returns None when no cars are assigned; controller returns {}."""
+    ctrl = LPController(horizon_steps=12, solver="highs")
+    state = _make_state(0, n_cars=1)
+    state["assignments"] = {}   # inconsistent: present_cars non-empty but no port assignments
+    result = ctrl.compute_action(state)
+    assert result == {}
