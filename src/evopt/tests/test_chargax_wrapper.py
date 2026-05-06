@@ -194,7 +194,9 @@ def test_extract_state_includes_bess_fields():
     assert state["socb_max"] == pytest.approx(30.0)
     assert state["I_high"]   == pytest.approx(25.0)
     assert state["I_low"]    == pytest.approx(25.0)
-    assert state["V_bess"]   == pytest.approx(400.0)
+    # V_bess is not propagated through state; the controller reads it directly
+    # from self.v_bess to avoid a dual source of truth.
+    assert "V_bess" not in state
 
 
 def test_extract_state_without_bess_has_no_bess_fields():

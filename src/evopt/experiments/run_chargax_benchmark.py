@@ -37,7 +37,7 @@ def main(n_seeds: int = 10, output_dir: Path = Path("results/chargax")) -> None:
     env = Chargax(
         station=station,
         minutes_per_timestep=5,
-        allow_discharging=False,
+        allow_discharging=True,
         renormalize_currents=False,
     )
     wrapper = ChargaxWrapper(

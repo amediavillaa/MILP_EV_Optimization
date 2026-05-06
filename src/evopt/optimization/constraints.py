@@ -5,7 +5,6 @@ add_offline_constraints(m, data, j_bess)
     C1  EV port current upper bound
     C2  BESS current bounds (SoC-dependent ratios)
     C3  Grid power cap
-    C4  Power balance
     C5  BESS SoC dynamics
     C6  BESS SoC bounds
     C7  Car SoC dynamics
@@ -38,16 +37,9 @@ def add_offline_constraints(m, data: dict, j_bess: int) -> None:
     # C3 — Grid power cap
     def grid_cap_rule(m, t):
         ev_power   = sum(m.I_ev[j, t] * m.V[j] for j in m.J_ev)
-        bess_power = (m.I_bess_dis[t] - m.I_bess_ch[t]) * m.V[j_bess]
+        bess_power = (m.I_bess_ch[t] - m.I_bess_dis[t]) * m.V[j_bess]
         return ev_power + bess_power <= m.P_max
     m.grid_cap = Constraint(m.T, rule=grid_cap_rule)
-
-    # C4 — Power balance
-    def power_balance_rule(m, t):
-        ev_power   = sum(m.I_ev[j, t] * m.V[j] for j in m.J_ev)
-        bess_power = (m.I_bess_dis[t] - m.I_bess_ch[t]) * m.V[j_bess]
-        return m.L[t] + ev_power + bess_power == m.P_grid[t]
-    m.power_balance = Constraint(m.T, rule=power_balance_rule)
 
     # C5 — BESS SoC dynamics
     def bess_soc_rule(m, t):
@@ -130,16 +122,9 @@ def add_rolling_constraints(
     # C3 — Grid power cap
     def grid_cap_rule(m, t):
         ev_power   = sum(m.I_ev[j, t] * m.V[j] for j in m.J_ev)
-        bess_power = (m.I_bess_dis[t] - m.I_bess_ch[t]) * m.V[j_bess]
+        bess_power = (m.I_bess_ch[t] - m.I_bess_dis[t]) * m.V[j_bess]
         return ev_power + bess_power <= m.P_max
     m.grid_cap = Constraint(m.WIN, rule=grid_cap_rule)
-
-    # C4 — Power balance
-    def power_balance_rule(m, t):
-        ev_power   = sum(m.I_ev[j, t] * m.V[j] for j in m.J_ev)
-        bess_power = (m.I_bess_dis[t] - m.I_bess_ch[t]) * m.V[j_bess]
-        return m.L[t] + ev_power + bess_power == m.P_grid[t]
-    m.power_balance = Constraint(m.WIN, rule=power_balance_rule)
 
     # C5 — BESS SoC dynamics (warm-started from socb_now)
     def bess_soc_rule(m, t):

@@ -98,9 +98,12 @@ def test_build_lp_data_has_required_keys():
         "J", "T", "delta_t", "P_max", "V", "I_max",
         "I_high", "I_low", "p_buy", "p_sell", "L",
         "assignments", "dep", "s_cap", "s_min", "P_car_max",
-        "r_car", "SoCB_init", "SoCB_min", "SoCB_max",
+        "r_car", "SoCB_min", "SoCB_max",
         "r_bess_ch", "r_bess_dis",
     }
+    # SoCB_init is NOT included: build_rolling_model takes socb_now as a
+    # direct argument; the dict key was dead code and has been removed.
+    assert "SoCB_init" not in data
     assert required <= data.keys()
 
 

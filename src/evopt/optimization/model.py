@@ -24,7 +24,6 @@ from pyomo.environ import (
     NonNegativeReals,
     Param,
     RangeSet,
-    Reals,
     Set,
     Var,
 )
@@ -159,7 +158,6 @@ def build_ev_lp_model(data: dict) -> ConcreteModel:
     m.I_bess_dis = Var(m.T, within=NonNegativeReals)
     m.SoCB       = Var(m.T, within=NonNegativeReals)
     m.soc_car    = Var(m.I, m.T, within=NonNegativeReals)
-    m.P_grid     = Var(m.T, within=Reals)
 
     # ------------------------------------------------------------------
     # Objective and constraints
@@ -248,7 +246,6 @@ def build_rolling_model(
     m.I_bess_dis = Var(m.WIN, within=NonNegativeReals)
     m.SoCB       = Var(m.WIN, within=NonNegativeReals)
     m.soc_car    = Var(m.I, m.WIN, within=NonNegativeReals)
-    m.P_grid     = Var(m.WIN, within=Reals)
 
     # ------------------------------------------------------------------
     # Objective and constraints

@@ -87,7 +87,6 @@ class LPController(BaseController):
                 for cid in cars
             },
             "r_car":     {(cid, step): 1.0 for cid in cars for step in window},
-            "SoCB_init": state["socb_now"],
             "SoCB_min":  self.socb_min,
             "SoCB_max":  self.socb_max,
             "r_bess_ch": {step: 1.0 for step in window},

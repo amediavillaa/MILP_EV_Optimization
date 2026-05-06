@@ -139,13 +139,18 @@ class ChargaxWrapper:
         }
 
         if self.v_bess is not None:
+            if not obs.get("batteries"):
+                raise RuntimeError(
+                    "ChargaxWrapper is configured for BESS (v_bess is set) but the "
+                    "Chargax observation contains no batteries. Ensure the station "
+                    "was built with build_station_with_battery."
+                )
             batt = obs["batteries"][0]
             state["socb_now"] = float(batt.battery_now)
             state["socb_min"] = self.socb_min
             state["socb_max"] = self.socb_max
             state["I_high"]   = self.I_high
             state["I_low"]    = self.I_low
-            state["V_bess"]   = self.v_bess
 
         return state
 
