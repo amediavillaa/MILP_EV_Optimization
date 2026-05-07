@@ -23,23 +23,28 @@ def load(path: Path) -> ChargaxSimResults:
     return ChargaxSimResults(**data, step_log=step_log)
 
 
-def build_summary(results_dir: Path) -> pd.DataFrame:
-    rows = []
-    for json_file in sorted(Path(results_dir).glob("**/*.json")):
-        result = load(json_file)
-        rows.append({
-            "controller":           result.controller_name,
-            "seed":                 result.seed,
-            "net_profit":           result.net_profit,
-            "total_revenue":        result.total_revenue,
-            "total_cost":           result.total_cost,
-            "served_customers":     result.served_customers,
-            "rejected_customers":   result.rejected_customers,
-            "mean_soc_at_departure": result.mean_soc_at_departure,
-        })
-    if not rows:
+def build_summary_from_results(results: list[ChargaxSimResults]) -> pd.DataFrame:
+    if not results:
         return pd.DataFrame()
+    rows = [
+        {
+            "controller":            r.controller_name,
+            "seed":                  r.seed,
+            "net_profit":            r.net_profit,
+            "total_revenue":         r.total_revenue,
+            "total_cost":            r.total_cost,
+            "served_customers":      r.served_customers,
+            "rejected_customers":    r.rejected_customers,
+            "mean_soc_at_departure": r.mean_soc_at_departure,
+        }
+        for r in results
+    ]
     df = pd.DataFrame(rows)
     best = df.groupby("controller")["net_profit"].mean().max()
     df["gap_to_best"] = df["net_profit"] - best
     return df
+
+
+def build_summary(results_dir: Path) -> pd.DataFrame:
+    results = [load(p) for p in sorted(Path(results_dir).glob("**/*.json"))]
+    return build_summary_from_results(results)
