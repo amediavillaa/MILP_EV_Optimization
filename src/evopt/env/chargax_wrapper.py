@@ -24,6 +24,8 @@ class ChargaxWrapper:
         p_max_kw: float,
         num_discretization_levels: int = 10,
         minutes_per_step: int = 5,
+        # EV customer tariff: fixed float (€/kWh) or None to use live Chargax p_sell
+        ev_tariff: float | None = 0.75,
         # BESS params (optional — if None, BESS is ignored)
         v_bess: float | None = None,
         I_high: float | None = None,   # max BESS charging current (A)
@@ -38,6 +40,7 @@ class ChargaxWrapper:
         self.P_max_w                   = p_max_kw * 1000.0
         self.num_discretization_levels = num_discretization_levels
         self.minutes_per_step          = minutes_per_step
+        self.ev_tariff                 = ev_tariff
 
         self.v_bess        = v_bess
         self.I_high        = I_high
@@ -114,15 +117,15 @@ class ChargaxWrapper:
         future_buy  = [float(p) for p in obs["future_buy_prices"]]
         future_sell = [float(p) for p in obs["future_sell_prices"]]
 
-        # p_buy  = grid electricity tariff (varies by hour, from Chargax market data)
-        # p_sell = V2G sell-back price (varies by hour; grid arbitrage mode)
+        # p_buy  = grid electricity buy price (varies by hour, from Chargax market data)
+        # p_sell = EV customer tariff: fixed (self.ev_tariff) or dynamic (Chargax sell price)
         p_buy: dict[int, float] = {}
         p_sell: dict[int, float] = {}
         for h, (bp, sp) in enumerate(zip(future_buy, future_sell)):
             for s in range(steps_per_hour):
                 step = t + h * steps_per_hour + s
                 p_buy[step]  = bp
-                p_sell[step] = sp
+                p_sell[step] = self.ev_tariff if self.ev_tariff is not None else sp
 
         state: dict = {
             "t":             t,
