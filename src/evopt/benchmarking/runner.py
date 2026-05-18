@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 import jax
@@ -33,7 +34,9 @@ class BenchmarkRunner:
             clean_state = self.wrapper.extract_state(obs, state)
             departures_soc.extend(clean_state.get("departed_socs", []))
 
+            t0              = time.perf_counter()
             actions         = controller.compute_action(clean_state)
+            compute_ms      = (time.perf_counter() - t0) * 1000.0
             chargax_actions = self.wrapper.to_chargax_actions(actions)
 
             t       = clean_state["t"]
@@ -46,6 +49,12 @@ class BenchmarkRunner:
                 energy_kwh = amps * v * delta_t / 1000.0
                 step_revenue += energy_kwh * clean_state["p_sell"].get(t, 0.0)
                 step_cost    += energy_kwh * clean_state["p_buy"].get(t, 0.0)
+
+            bess_port = clean_state["J"] + 1
+            bess_net_amps = actions.get(bess_port, 0.0)
+            if self.wrapper.v_bess is not None and bess_net_amps != 0.0:
+                bess_net_kwh = -bess_net_amps * self.wrapper.v_bess * delta_t / 1000.0
+                step_cost += bess_net_kwh * clean_state["p_buy"].get(t, 0.0)
 
             key, subkey = jax.random.split(key)
             timestep, state = self.env.step_env(subkey, state, chargax_actions)
@@ -60,6 +69,7 @@ class BenchmarkRunner:
                 rejected     = int(state.rejected_customers),
                 step_revenue = step_revenue,
                 step_cost    = step_cost,
+                compute_ms   = compute_ms,
             ))
 
             done = bool(timestep.terminated) or bool(timestep.truncated)
