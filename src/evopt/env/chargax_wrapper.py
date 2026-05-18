@@ -33,6 +33,8 @@ class ChargaxWrapper:
         socb_min: float = 0.0,
         socb_max: float | None = None,
         p_bess_max_kw: float | None = None,
+        allow_discharging: bool = False,       # EVSE bidirectionality (V2G)
+        allow_bess_discharging: bool = False,  # BESS discharge in LP
     ) -> None:
         self.J                         = n_ports
         self.V                         = {j + 1: v     for j in range(n_ports)}
@@ -42,12 +44,14 @@ class ChargaxWrapper:
         self.minutes_per_step          = minutes_per_step
         self.ev_tariff                 = ev_tariff
 
-        self.v_bess        = v_bess
-        self.I_high        = I_high
-        self.I_low         = I_low
-        self.socb_min      = socb_min
-        self.socb_max      = socb_max
-        self.p_bess_max_kw = p_bess_max_kw
+        self.v_bess            = v_bess
+        self.I_high            = I_high
+        self.I_low             = I_low
+        self.socb_min          = socb_min
+        self.socb_max          = socb_max
+        self.p_bess_max_kw     = p_bess_max_kw
+        self.allow_discharging      = allow_discharging
+        self.allow_bess_discharging = allow_bess_discharging
 
         self._charger_to_car: dict[int, int] = {}
         self._prev_connected: set[int]        = set()
@@ -117,9 +121,9 @@ class ChargaxWrapper:
         future_buy  = [float(p) for p in obs["future_buy_prices"]]
         future_sell = [float(p) for p in obs["future_sell_prices"]]
 
-        # p_buy  = grid electricity buy price (varies by hour, from Chargax market data)
-        # p_sell = EV customer tariff: fixed (self.ev_tariff) or dynamic (Chargax sell price)
-        p_buy: dict[int, float] = {}
+        # p_buy  = grid electricity buy price (market, varies by hour)
+        # p_sell = EV customer tariff: fixed (self.ev_tariff) or dynamic market price
+        p_buy: dict[int, float]  = {}
         p_sell: dict[int, float] = {}
         for h, (bp, sp) in enumerate(zip(future_buy, future_sell)):
             for s in range(steps_per_hour):
@@ -153,7 +157,7 @@ class ChargaxWrapper:
             state["socb_min"] = self.socb_min
             state["socb_max"] = self.socb_max
             state["I_high"]   = self.I_high
-            state["I_low"]    = self.I_low
+            state["I_low"]    = self.I_low if self.allow_bess_discharging else 0.0
 
         return state
 
@@ -170,13 +174,31 @@ class ChargaxWrapper:
         Mapping from LP power (positive = discharge) to Chargax level:
             level = round((1 - bess_power_kw / p_bess_max_kw) * N)
         clamped to [0, 2*N].
+
+        Hard grid cap: total EV grid draw is clipped to P_max before discretisation
+        so that all controllers, including baselines, respect the same physical limit.
+        BESS discharging reduces grid draw; BESS charging adds to it.
         """
+        p_max_kw = self.P_max_w / 1000.0
+
+        ev_kw = sum(
+            actions.get(j + 1, 0.0) * self.V[j + 1] / 1000.0
+            for j in range(self.J)
+        )
+        bess_net_kw = 0.0
+        if self.v_bess is not None:
+            bess_net_kw = actions.get(self.J + 1, 0.0) * self.v_bess / 1000.0  # positive = discharging
+
+        grid_draw_kw = ev_kw - bess_net_kw  # net draw from grid
+        scale = (p_max_kw / grid_draw_kw) if grid_draw_kw > p_max_kw else 1.0
+
         levels = []
         for j in range(self.J):
             port_j = j + 1
-            amps   = actions.get(port_j, 0.0)
+            amps   = actions.get(port_j, 0.0) * scale
             levels.append(discretize_amps(amps, self.I_max[port_j],
-                                          self.num_discretization_levels))
+                                          self.num_discretization_levels,
+                                          bidirectional=self.allow_discharging))
 
         if self.v_bess is not None:
             bess_net_amps = actions.get(self.J + 1, 0.0)
