@@ -94,9 +94,16 @@ class LPController(BaseController):
         t           = state["t"]
         J           = state["J"]
         assignments = state["assignments"]
-        soc_now     = {cid: c["soc_now"] for cid, c in state["present_cars"].items()}
         socb_now    = state.get("socb_now", 0.0)
         data        = self._build_lp_data(state)
+        # Clamp soc_now to s_target: Chargax discretisation can overshoot the
+        # LP's planned energy, making soc_now > s_target.  The rolling model's
+        # C8 constraint (soc_car <= s_target) is then immediately infeasible,
+        # which silences charging for every car at that step.
+        soc_now = {
+            cid: min(c["soc_now"], data["s_target"][cid])
+            for cid, c in state["present_cars"].items()
+        }
 
         m = build_rolling_model(data, t, self.horizon_steps, assignments, soc_now, socb_now)
         if m is None:
