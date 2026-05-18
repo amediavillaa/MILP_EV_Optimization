@@ -36,10 +36,8 @@ class LPController(BaseController):
         self.socb_max         = socb_max
         self.minutes_per_step = minutes_per_step
 
-        self._plan: dict[int, dict[int, float]] | None = None
-
     def reset(self) -> None:
-        self._plan = None
+        pass
 
     def compute_action(self, state: dict) -> dict[int, float]:
         t = state["t"]
@@ -47,10 +45,8 @@ class LPController(BaseController):
         if not state["present_cars"]:
             return {}
 
-        if not self._plan or t % self.horizon_steps == 0:
-            self._plan = self._solve(state)
-
-        return self._plan.get(t, {})
+        plan = self._solve(state)
+        return plan.get(t, {})
 
     def _build_lp_data(self, state: dict) -> dict:
         T_max = 24 * 60 // self.minutes_per_step - 1   # assumes single-day planning epoch
@@ -73,14 +69,15 @@ class LPController(BaseController):
             "P_max":    state["P_max"],
             "V":        {**state["V"], J + 1: self.v_bess},
             "I_max":    state["I_max"],
-            "I_high":   self.I_high,
-            "I_low":    self.I_low,
-            "p_buy":    state["p_buy"],
-            "p_sell":   state["p_sell"],
+            "I_high":   state.get("I_high", self.I_high),
+            "I_low":    state.get("I_low",  self.I_low),
+            "p_buy":       state["p_buy"],
+            "p_sell":      state["p_sell"],
             "L":        {step: 0.0 for step in window},
             "assignments": assignments,
-            "dep":      {cid: c["t_max"] for cid, c in state["present_cars"].items()},
-            "s_cap":    {cid: c["s_cap"] for cid, c in state["present_cars"].items()},
+            "dep":      {cid: c["t_max"]    for cid, c in state["present_cars"].items()},
+            "s_cap":    {cid: c["s_cap"]    for cid, c in state["present_cars"].items()},
+            "s_target": {cid: c["s_target"] for cid, c in state["present_cars"].items()},
             "s_min":    {cid: 0.0 for cid in cars},
             "P_car_max": {
                 cid: state["V"][assignments[cid]] * state["I_max"][assignments[cid]]
@@ -98,14 +95,26 @@ class LPController(BaseController):
         J           = state["J"]
         assignments = state["assignments"]
         soc_now     = {cid: c["soc_now"] for cid, c in state["present_cars"].items()}
-        socb_now    = state["socb_now"]
+        socb_now    = state.get("socb_now", 0.0)
         data        = self._build_lp_data(state)
 
         m = build_rolling_model(data, t, self.horizon_steps, assignments, soc_now, socb_now)
         if m is None:
             return {}
 
-        solve(m, solver=self.solver)
+        try:
+            solve(m, solver=self.solver)
+        except Exception:
+            # Must-serve + grid cap can be jointly infeasible in rare tight scenarios;
+            # rebuild without must-serve as a last resort so the step is never skipped.
+            try:
+                m = build_rolling_model(data, t, self.horizon_steps, assignments,
+                                        soc_now, socb_now, bare=True)
+                if m is None:
+                    return {}
+                solve(m, solver=self.solver)
+            except Exception:
+                return {}
 
         T_max = data["T"]
         t_end = min(t + self.horizon_steps - 1, T_max)
