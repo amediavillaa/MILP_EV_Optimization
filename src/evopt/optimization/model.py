@@ -28,8 +28,15 @@ from pyomo.environ import (
     Var,
 )
 
-from evopt.optimization.objective   import add_offline_objective,   add_rolling_objective
-from evopt.optimization.constraints import add_offline_constraints, add_rolling_constraints
+from evopt.optimization.objective   import (
+    add_offline_profit_objective,
+    add_rolling_profit_objective,
+)
+from evopt.optimization.constraints import (
+    add_offline_constraints,
+    add_rolling_constraints,
+    add_must_serve_constraints,
+)
 
 
 # ======================================================================
@@ -135,12 +142,12 @@ def build_ev_lp_model(data: dict) -> ConcreteModel:
     m.I_max     = Param(m.J_ev,  initialize=data["I_max"])
     m.I_high    = Param(initialize=data["I_high"])
     m.I_low     = Param(initialize=data["I_low"])
-    m.p_buy     = Param(m.T, initialize=data["p_buy"])
-    m.p_sell    = Param(m.T, initialize=data["p_sell"])
-    m.L         = Param(m.T, initialize=data["L"])
-    m.SoCB_min  = Param(initialize=data["SoCB_min"])
-    m.SoCB_max  = Param(initialize=data["SoCB_max"])
-    m.SoCB_init = Param(initialize=data["SoCB_init"])
+    m.p_buy       = Param(m.T, initialize=data["p_buy"])
+    m.p_sell      = Param(m.T, initialize=data["p_sell"])
+    m.L           = Param(m.T, initialize=data["L"])
+    m.SoCB_min    = Param(initialize=data["SoCB_min"])
+    m.SoCB_max    = Param(initialize=data["SoCB_max"])
+    m.SoCB_init   = Param(initialize=data["SoCB_init"])
 
     z_data = data.get("z") or _build_occupancy(data)
     m.z = Param(m.J_ev, m.T, initialize=z_data, default=0)
@@ -162,7 +169,7 @@ def build_ev_lp_model(data: dict) -> ConcreteModel:
     # ------------------------------------------------------------------
     # Objective and constraints
     # ------------------------------------------------------------------
-    add_offline_objective(m, j_bess)
+    add_offline_profit_objective(m, j_bess)
     add_offline_constraints(m, data, j_bess)
 
     return m
@@ -179,6 +186,7 @@ def build_rolling_model(
     assignments: dict,   # {car_i: port_j}  — currently docked cars
     soc_now:     dict,   # {car_i: float}   — car SoC at start of t_start
     socb_now:    float,  #                    BESS SoC at start of t_start
+    bare:        bool = False,  # skip must-serve constraints (infeasibility fallback)
 ) -> ConcreteModel | None:
     """
     Build one MPC step over [t_start, t_start + horizon - 1].
@@ -214,10 +222,10 @@ def build_rolling_model(
     m.I_low     = Param(initialize=data["I_low"])
     m.SoCB_min  = Param(initialize=data["SoCB_min"])
     m.SoCB_max  = Param(initialize=data["SoCB_max"])
-    m.p_buy     = Param(m.WIN, initialize={
+    m.p_buy       = Param(m.WIN, initialize={
         t: data["p_buy"][t] for t in range(t_start, t_end + 1)
     })
-    m.p_sell    = Param(m.WIN, initialize={
+    m.p_sell      = Param(m.WIN, initialize={
         t: data["p_sell"][t] for t in range(t_start, t_end + 1)
     })
     m.L         = Param(m.WIN, initialize={
@@ -250,8 +258,10 @@ def build_rolling_model(
     # ------------------------------------------------------------------
     # Objective and constraints
     # ------------------------------------------------------------------
-    add_rolling_objective(m, j_bess)
+    add_rolling_profit_objective(m, j_bess)
     add_rolling_constraints(m, data, assignments, soc_now, socb_now, t_start, j_bess)
+    if not bare:
+        add_must_serve_constraints(m, data, soc_now, t_start, t_end)
 
     return m
 
@@ -300,7 +310,10 @@ def compute_equal_allocation(
         P_port = V * data["I_max"][j]
         P_car  = data["r_car"].get((i, 0), 1.0) * data["P_car_max"][i]
 
-        P_i = min(P_share, P_port, P_car)
+        energy_needed_kwh = max(0.0, data["s_target"][i] - soc_now[i])
+        P_needed = energy_needed_kwh / (dt / 1000.0)
+
+        P_i = min(P_share, P_port, P_car, P_needed)
         I_i = P_i / V
 
         currents[j] = I_i
