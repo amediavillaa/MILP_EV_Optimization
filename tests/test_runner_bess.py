@@ -78,6 +78,21 @@ def test_runner_bess_discharging_reduces_step_cost():
     assert result.step_log[0].step_cost == pytest.approx(expected, rel=1e-3)
 
 
+def test_runner_net_profit_equals_revenue_minus_cost():
+    """net_profit must equal total_revenue - total_cost (consistent accounting)."""
+    runner, ctrl = _make_mock_runner(bess_net_amps=-25.0, p_buy=0.30)
+    result = runner.run_episode(ctrl, seed=0)
+    assert result.net_profit == pytest.approx(result.total_revenue - result.total_cost, rel=1e-9)
+
+
+def test_runner_profit_delta_is_step_profit():
+    """profit_delta in each StepRecord must equal step_revenue - step_cost."""
+    runner, ctrl = _make_mock_runner(bess_net_amps=-25.0, p_buy=0.30)
+    result = runner.run_episode(ctrl, seed=0)
+    for rec in result.step_log:
+        assert rec.profit_delta == pytest.approx(rec.step_revenue - rec.step_cost, rel=1e-9)
+
+
 def test_runner_no_bess_step_cost_unaffected():
     """When wrapper.v_bess is None, BESS actions should not change step_cost."""
     from evopt.benchmarking.runner import BenchmarkRunner

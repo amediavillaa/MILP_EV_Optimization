@@ -64,7 +64,7 @@ class BenchmarkRunner:
                 t            = t,
                 actions      = {k: float(v) for k, v in actions.items()},
                 reward       = float(timestep.reward),
-                profit_delta = float(state.profit),
+                profit_delta = step_revenue - step_cost,
                 served       = int(state.served_customers),
                 rejected     = int(state.rejected_customers),
                 step_revenue = step_revenue,
