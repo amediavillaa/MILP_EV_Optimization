@@ -22,9 +22,9 @@ def test_negative_current_clamps_to_zero():
     assert discretize_amps(-5.0, 32.0, 10) == 0
 
 
-def test_rounding_rounds_to_nearest():
-    # 17/32 * 10 = 5.3125 → rounds to 5
-    assert discretize_amps(17.0, 32.0, 10) == 5
+def test_rounding_uses_ceiling():
+    # 17/32 * 10 = 5.3125 → ceil = 6 (at-or-above LP plan)
+    assert discretize_amps(17.0, 32.0, 10) == 6
 
 
 def test_zero_i_max_returns_zero():

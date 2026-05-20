@@ -15,7 +15,7 @@ def _make_result(name: str, seed: int, profit: float) -> ChargaxSimResults:
         total_cost=2.0,
         served_customers=5,
         rejected_customers=1,
-        mean_soc_at_departure=0.9,
+        mean_soc_fulfillment=0.9,
         step_log=[StepRecord(t=0, actions={1: 16.0}, reward=0.1,
                              profit_delta=0.05, served=0, rejected=0)],
     )

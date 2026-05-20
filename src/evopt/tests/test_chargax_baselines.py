@@ -16,7 +16,7 @@ def _make_state(n_cars: int = 2) -> dict:
         "p_buy": {0: 0.20}, "p_sell": {0: 0.40},
         "present_cars": present_cars,
         "assignments":  assignments,
-        "departed_socs": [],
+        "departed_fulfillments": [],
     }
 
 

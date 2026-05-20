@@ -12,7 +12,8 @@ add_offline_constraints(m, data, j_bess)
     C9  Car charging power limit (SoC-dependent)
     C10 Occupancy enforcement
 
-add_rolling_constraints(m, data, assignments, soc_now, socb_now, t_start, j_bess)
+add_rolling_constraints(m, data, assignments, soc_now, socb_now, t_start, j_bess,
+                        eta_bess)
     Same constraint set; window is m.WIN; warm-started from soc_now / socb_now.
 """
 
@@ -37,11 +38,11 @@ def add_offline_constraints(m, data: dict, j_bess: int,
     m.bess_ch_ub  = Constraint(m.T, rule=bess_ch_ub_rule)
     m.bess_dis_ub = Constraint(m.T, rule=bess_dis_ub_rule)
 
-    # C3 — Grid power cap
+    # C3 — Grid power cap (background load L reduces available headroom)
     def grid_cap_rule(m, t):
         ev_power   = sum(m.I_ev[j, t] * m.V[j] for j in m.J_ev)
         bess_power = (m.I_bess_ch[t] - m.I_bess_dis[t]) * m.V[j_bess]
-        return ev_power + bess_power <= m.P_max
+        return ev_power + bess_power + m.L[t] <= m.P_max
     m.grid_cap = Constraint(m.T, rule=grid_cap_rule)
 
     # C5 — BESS SoC dynamics (raw commanded current, matching Chargax SoC update)
@@ -118,17 +119,17 @@ def add_rolling_constraints(
 
     # C2 — BESS current bounds
     def bess_ch_ub_rule(m, t):
-        return m.I_bess_ch[t] <= data["r_bess_ch"][t] * value(m.I_high)
+        return m.I_bess_ch[t] <= data["r_bess_ch"][t] * m.I_high
     def bess_dis_ub_rule(m, t):
-        return m.I_bess_dis[t] <= data["r_bess_dis"][t] * value(m.I_low)
+        return m.I_bess_dis[t] <= data["r_bess_dis"][t] * m.I_low
     m.bess_ch_ub  = Constraint(m.WIN, rule=bess_ch_ub_rule)
     m.bess_dis_ub = Constraint(m.WIN, rule=bess_dis_ub_rule)
 
-    # C3 — Grid power cap
+    # C3 — Grid power cap (background load L reduces available headroom)
     def grid_cap_rule(m, t):
         ev_power   = sum(m.I_ev[j, t] * m.V[j] for j in m.J_ev)
         bess_power = (m.I_bess_ch[t] - m.I_bess_dis[t]) * m.V[j_bess]
-        return ev_power + bess_power <= m.P_max
+        return ev_power + bess_power + m.L[t] <= m.P_max
     m.grid_cap = Constraint(m.WIN, rule=grid_cap_rule)
 
     # C5 — BESS SoC dynamics (raw commanded current, warm-started from socb_now)

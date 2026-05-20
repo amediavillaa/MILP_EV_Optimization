@@ -1,14 +1,16 @@
+"""Tests for compute_summary_metrics."""
 import pytest
-from evopt.benchmarking.results import ChargaxSimResults, StepRecord
+from evopt.benchmarking.results import ChargaxSimResults
 from evopt.metrics.evaluation import compute_summary_metrics
 
 
-def _r(name, profit, served, rejected):
+def _r(name: str, profit: float, served: int, rejected: int,
+       fulfillment: float = 0.9) -> ChargaxSimResults:
     return ChargaxSimResults(
         controller_name=name, seed=0, episode_date="2023-01-01",
-        net_profit=profit, total_revenue=profit+2, total_cost=2,
+        net_profit=profit, total_revenue=profit + 2, total_cost=2.0,
         served_customers=served, rejected_customers=rejected,
-        mean_soc_fulfillment=0.9,
+        mean_soc_fulfillment=fulfillment,
         step_log=[],
     )
 
@@ -36,6 +38,18 @@ def test_computes_std_profit():
 
 
 def test_computes_served_rate():
-    results = [_r("milp", 10.0, 8, 2)]   # 8 served, 2 rejected → rate = 0.8
+    results = [_r("milp", 10.0, 8, 2)]
     summary = compute_summary_metrics(results)
     assert summary["milp"]["served_rate_mean"] == pytest.approx(0.8)
+
+
+def test_returns_mean_soc_fulfillment_not_departure_soc():
+    """compute_summary_metrics must aggregate mean_soc_fulfillment (renamed field)."""
+    results = [_r("lp", 5.0, 3, 0, fulfillment=0.75),
+               _r("lp", 6.0, 4, 0, fulfillment=0.85)]
+    summary = compute_summary_metrics(results)
+    assert "mean_soc_fulfillment" in summary["lp"], (
+        "Key 'mean_soc_fulfillment' missing — field may still reference "
+        "old name 'mean_soc_at_departure'."
+    )
+    assert summary["lp"]["mean_soc_fulfillment"] == pytest.approx(0.80)

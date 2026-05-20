@@ -32,7 +32,7 @@ def test_chargax_sim_results_construction():
         total_cost=3.0,
         served_customers=4,
         rejected_customers=1,
-        mean_soc_at_departure=0.85,
+        mean_soc_fulfillment=0.85,
         step_log=[_make_step(0), _make_step(1)],
     )
     assert result.net_profit == 5.0
@@ -54,12 +54,12 @@ def test_from_final_state():
         seed=3,
         state=MockFinalState(),
         step_log=step_log,
-        departures_soc=[45.0, 30.0, 60.0],
+        departures_fulfillment=[0.75, 0.50, 1.0],
     )
     assert result.controller_name == "milp_h12"
     assert result.seed == 3
-    assert result.net_profit == 12.5
+    assert result.net_profit == pytest.approx(3 * 0.08 - 3 * 0.04)
     assert result.served_customers == 6
     assert result.total_revenue == pytest.approx(3 * 0.08)
     assert result.total_cost == pytest.approx(3 * 0.04)
-    assert result.mean_soc_at_departure == pytest.approx(45.0)
+    assert result.mean_soc_fulfillment == pytest.approx((0.75 + 0.50 + 1.0) / 3)

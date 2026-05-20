@@ -27,15 +27,15 @@ def compute_summary_metrics(results: list[ChargaxSimResults]) -> dict:
             r.rejected_customers / max(1, r.served_customers + r.rejected_customers)
             for r in rs
         ]
-        socs = [r.mean_soc_at_departure for r in rs]
+        socs = [r.mean_soc_fulfillment for r in rs]
 
         summary[name] = {
-            "net_profit_mean":       statistics.mean(profits),
-            "net_profit_std":        statistics.pstdev(profits),
-            "served_rate_mean":      statistics.mean(served_rates),
-            "served_rate_std":       statistics.pstdev(served_rates),
-            "rejection_rate_mean":   statistics.mean(reject_rates),
-            "rejection_rate_std":    statistics.pstdev(reject_rates),
-            "mean_soc_at_departure": statistics.mean(socs),
+            "net_profit_mean":      statistics.mean(profits),
+            "net_profit_std":       statistics.pstdev(profits),
+            "served_rate_mean":     statistics.mean(served_rates),
+            "served_rate_std":      statistics.pstdev(served_rates),
+            "rejection_rate_mean":  statistics.mean(reject_rates),
+            "rejection_rate_std":   statistics.pstdev(reject_rates),
+            "mean_soc_fulfillment": statistics.mean(socs),
         }
     return summary

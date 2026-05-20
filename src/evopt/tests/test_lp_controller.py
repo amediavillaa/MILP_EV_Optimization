@@ -24,16 +24,14 @@ def _make_state(t: int, n_cars: int = 1, p_max_w: float = 10_000.0,
         "p_sell":        p_sell,
         "present_cars":  present_cars,
         "assignments":   assignments,
-        "departed_socs": [],
+        "departed_fulfillments": [],
         "socb_now":      socb_now,
     }
 
 
-def test_reset_clears_plan():
+def test_reset_does_not_raise():
     ctrl = LPController(horizon_steps=12, solver="highs")
-    ctrl._plan = {0: {1: 10.0}}
-    ctrl.reset()
-    assert ctrl._plan is None
+    ctrl.reset()   # stateless controller — reset is a no-op
 
 
 def test_no_cars_returns_empty():
@@ -48,46 +46,6 @@ def test_with_one_car_returns_nonempty_actions():
     actions = ctrl.compute_action(state)
     assert 1 in actions
     assert actions[1] >= 0.0
-
-
-def test_bess_action_in_plan():
-    """BESS port J+1 must appear in the plan."""
-    ctrl = LPController(horizon_steps=6, solver="highs")
-    state = _make_state(0, n_cars=1)
-    ctrl.compute_action(state)
-    J = state["J"]
-    t = state["t"]
-    assert (J + 1) in ctrl._plan[t]
-
-
-def test_plan_cached_within_horizon():
-    ctrl = LPController(horizon_steps=12, solver="highs")
-    state0 = _make_state(0)
-    ctrl.compute_action(state0)
-    plan_after_t0 = ctrl._plan
-
-    state1 = _make_state(1)
-    ctrl.compute_action(state1)
-    assert ctrl._plan is plan_after_t0   # no re-solve between horizon boundaries
-
-
-def test_resolves_at_horizon_boundary():
-    ctrl = LPController(horizon_steps=12, solver="highs")
-    state0 = _make_state(0)
-    ctrl.compute_action(state0)
-    plan_after_t0 = ctrl._plan
-
-    state12 = _make_state(12)
-    ctrl.compute_action(state12)
-    assert ctrl._plan is not plan_after_t0   # new solve at t=12
-
-
-def test_resolves_when_plan_is_none():
-    ctrl = LPController(horizon_steps=12, solver="highs")
-    ctrl._plan = None
-    state = _make_state(5)
-    ctrl.compute_action(state)
-    assert ctrl._plan is not None
 
 
 def test_build_lp_data_has_required_keys():

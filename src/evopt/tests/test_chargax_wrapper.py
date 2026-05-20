@@ -95,7 +95,8 @@ def test_departure_removes_car():
                         [0.0, 0.0], [0.0, 0.0])
     state2 = w.extract_state(_make_obs(evse_off), MockState(1))
     assert car_id not in state2["present_cars"]
-    assert state2["departed_socs"] == [pytest.approx(20.0)]
+    # Fulfillment ratio: soc_at_departure=20.0, s_target=0.8*60=48.0 → 20/48 ≈ 0.4167
+    assert state2["departed_fulfillments"] == [pytest.approx(20.0 / 48.0)]
 
 
 def test_soc_fields_extracted_correctly():
@@ -121,7 +122,7 @@ def test_price_dict_populated():
     state = w.extract_state(_make_obs(evse, buy_prices=[0.20] * 6, sell_prices=[0.24] * 6),
                             MockState(0))
     assert state["p_buy"][0] == pytest.approx(0.20)
-    assert state["p_sell"][0] == pytest.approx(0.24)  # V2G sell-back price
+    assert state["p_sell"][0] == pytest.approx(0.75)  # fixed ev_tariff overrides raw sell price
     assert 0 in state["p_buy"]
 
 
@@ -193,7 +194,7 @@ def test_extract_state_includes_bess_fields():
     assert state["socb_min"] == pytest.approx(3.0)
     assert state["socb_max"] == pytest.approx(30.0)
     assert state["I_high"]   == pytest.approx(25.0)
-    assert state["I_low"]    == pytest.approx(25.0)
+    assert state["I_low"]    == pytest.approx(0.0)  # allow_bess_discharging=False → 0
     # V_bess is not propagated through state; the controller reads it directly
     # from self.v_bess to avoid a dual source of truth.
     assert "V_bess" not in state

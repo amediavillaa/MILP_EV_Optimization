@@ -14,9 +14,6 @@ build_rolling_model(data, t_start, horizon, assignments, soc_now,
                     socb_now)
     Single MPC step over [t_start, t_start + H - 1].  Same cost
     structure; car SoC and BESS SoC are warm-started from the caller.
-
-compute_equal_allocation(data, assignments, soc_now, socb_now)
-    Rule-based equal-share controller (no optimisation).
 """
 
 from pyomo.environ import (
@@ -43,16 +40,6 @@ from evopt.optimization.constraints import (
 #  Helpers
 # ======================================================================
 
-def _port_of(assignments: dict, i: int) -> int:
-    """Return the port j to which car i is assigned."""
-    return assignments[i]
-
-
-def _cars_on_port(assignments: dict, j: int) -> list:
-    """Return sorted list of car indices assigned to port j."""
-    return sorted(i for i, jp in assignments.items() if jp == j)
-
-
 def _build_occupancy(data: dict) -> dict:
     """
     Derive z[j,t] from assignments, arrival, and departure times.
@@ -66,14 +53,6 @@ def _build_occupancy(data: dict) -> dict:
         for t in range(data["arr"][i], data["dep"][i] + 1):
             z[j, t] = 1
     return z
-
-
-def _car_at_port(data: dict, j: int, t: int) -> int | None:
-    """Return the car index occupying port j at step t, or None."""
-    for i, jp in data["assignments"].items():
-        if jp == j and data["arr"][i] <= t <= data["dep"][i]:
-            return i
-    return None
 
 
 # ======================================================================
