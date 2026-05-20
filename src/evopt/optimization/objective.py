@@ -19,9 +19,11 @@ Profit maximisation:
 from pyomo.environ import Objective, minimize, value
 
 _URGENCY_EPS = 1e-4
+_ETA_BESS    = 0.95   # one-way efficiency per direction; round-trip = 0.95^2 ~= 0.90
 
 
-def add_offline_profit_objective(m, j_bess: int) -> None:
+def add_offline_profit_objective(m, j_bess: int,
+                                 eta_bess: float = _ETA_BESS) -> None:
     def obj_rule(m):
         steps  = sorted(m.T)
         t_last = steps[-1]
@@ -32,11 +34,12 @@ def add_offline_profit_objective(m, j_bess: int) -> None:
             * m.delta_t / 1000.0
             for j in m.J_ev for t in m.T
         )
+        # Charging draws I_ch/eta from grid; discharging saves I_dis*eta from grid.
         grid_cost = sum(
             (
                 sum(m.V[j] * m.I_ev[j, t] for j in m.J_ev)
-                + m.V[j_bess] * m.I_bess_ch[t]
-                - m.V[j_bess] * m.I_bess_dis[t]
+                + m.V[j_bess] * m.I_bess_ch[t] / eta_bess
+                - m.V[j_bess] * m.I_bess_dis[t] * eta_bess
             )
             * m.p_buy[t] * m.delta_t / 1000.0
             for t in m.T
@@ -46,7 +49,8 @@ def add_offline_profit_objective(m, j_bess: int) -> None:
     m.obj = Objective(rule=obj_rule, sense=minimize)
 
 
-def add_rolling_profit_objective(m, j_bess: int) -> None:
+def add_rolling_profit_objective(m, j_bess: int,
+                                 eta_bess: float = _ETA_BESS) -> None:
     def obj_rule(m):
         steps  = sorted(m.WIN)
         t_last = steps[-1]
@@ -57,11 +61,12 @@ def add_rolling_profit_objective(m, j_bess: int) -> None:
             * m.delta_t / 1000.0
             for j in m.J_ev for t in m.WIN
         )
+        # Charging draws I_ch/eta from grid; discharging saves I_dis*eta from grid.
         grid_cost = sum(
             (
                 sum(m.V[j] * m.I_ev[j, t] for j in m.J_ev)
-                + m.V[j_bess] * m.I_bess_ch[t]
-                - m.V[j_bess] * m.I_bess_dis[t]
+                + m.V[j_bess] * m.I_bess_ch[t] / eta_bess
+                - m.V[j_bess] * m.I_bess_dis[t] * eta_bess
             )
             * m.p_buy[t] * m.delta_t / 1000.0
             for t in m.WIN

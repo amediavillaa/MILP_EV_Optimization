@@ -18,10 +18,11 @@ add_rolling_constraints(m, data, assignments, soc_now, socb_now, t_start, j_bess
 
 from pyomo.environ import Constraint, value
 
-_ETA_BESS = 0.95   # round-trip charge/discharge efficiency — matches Chargax
+_ETA_BESS = 0.95   # one-way efficiency per direction; round-trip = 0.95^2 ~= 0.90
 
 
-def add_offline_constraints(m, data: dict, j_bess: int) -> None:
+def add_offline_constraints(m, data: dict, j_bess: int,
+                            eta_bess: float = _ETA_BESS) -> None:
 
     # C1 — EV port current upper bound
     def ev_current_ub_rule(m, j, t):
@@ -43,9 +44,10 @@ def add_offline_constraints(m, data: dict, j_bess: int) -> None:
         return ev_power + bess_power <= m.P_max
     m.grid_cap = Constraint(m.T, rule=grid_cap_rule)
 
-    # C5 — BESS SoC dynamics (separate charge/discharge terms to model eta correctly)
+    # C5 — BESS SoC dynamics (raw commanded current, matching Chargax SoC update)
+    # Eta appears only in the objective grid-cost terms, not here.
     def bess_soc_rule(m, t):
-        net_in = (m.I_bess_ch[t] * _ETA_BESS - m.I_bess_dis[t] / _ETA_BESS) \
+        net_in = (m.I_bess_ch[t] - m.I_bess_dis[t]) \
                  * m.V[j_bess] * (m.delta_t / 1000.0)
         if t == 1:
             return m.SoCB[t] == m.SoCB_init + net_in
@@ -106,6 +108,7 @@ def add_rolling_constraints(
     socb_now:    float,
     t_start:     int,
     j_bess:      int,
+    eta_bess:    float = _ETA_BESS,
 ) -> None:
 
     # C1 — EV port current upper bound
@@ -128,9 +131,9 @@ def add_rolling_constraints(
         return ev_power + bess_power <= m.P_max
     m.grid_cap = Constraint(m.WIN, rule=grid_cap_rule)
 
-    # C5 — BESS SoC dynamics (warm-started from socb_now; eta applied per direction)
+    # C5 — BESS SoC dynamics (raw commanded current, warm-started from socb_now)
     def bess_soc_rule(m, t):
-        net_in = (m.I_bess_ch[t] * _ETA_BESS - m.I_bess_dis[t] / _ETA_BESS) \
+        net_in = (m.I_bess_ch[t] - m.I_bess_dis[t]) \
                  * m.V[j_bess] * (m.delta_t / 1000.0)
         if t == t_start:
             return m.SoCB[t] == socb_now + net_in

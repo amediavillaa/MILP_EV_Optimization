@@ -80,7 +80,7 @@ def _car_at_port(data: dict, j: int, t: int) -> int | None:
 #  Full offline LP
 # ======================================================================
 
-def build_ev_lp_model(data: dict) -> ConcreteModel:
+def build_ev_lp_model(data: dict, eta_bess: float = 0.95) -> ConcreteModel:
     """
     Build the offline LP from a scenario data dictionary.
 
@@ -169,8 +169,8 @@ def build_ev_lp_model(data: dict) -> ConcreteModel:
     # ------------------------------------------------------------------
     # Objective and constraints
     # ------------------------------------------------------------------
-    add_offline_profit_objective(m, j_bess)
-    add_offline_constraints(m, data, j_bess)
+    add_offline_profit_objective(m, j_bess, eta_bess=eta_bess)
+    add_offline_constraints(m, data, j_bess, eta_bess=eta_bess)
 
     return m
 
@@ -186,7 +186,8 @@ def build_rolling_model(
     assignments: dict,   # {car_i: port_j}  — currently docked cars
     soc_now:     dict,   # {car_i: float}   — car SoC at start of t_start
     socb_now:    float,  #                    BESS SoC at start of t_start
-    bare:        bool = False,  # skip must-serve constraints (infeasibility fallback)
+    bare:        bool  = False,  # skip must-serve constraints (infeasibility fallback)
+    eta_bess:    float = 0.95,
 ) -> ConcreteModel | None:
     """
     Build one MPC step over [t_start, t_start + horizon - 1].
@@ -258,8 +259,9 @@ def build_rolling_model(
     # ------------------------------------------------------------------
     # Objective and constraints
     # ------------------------------------------------------------------
-    add_rolling_profit_objective(m, j_bess)
-    add_rolling_constraints(m, data, assignments, soc_now, socb_now, t_start, j_bess)
+    add_rolling_profit_objective(m, j_bess, eta_bess=eta_bess)
+    add_rolling_constraints(m, data, assignments, soc_now, socb_now, t_start, j_bess,
+                            eta_bess=eta_bess)
     if not bare:
         add_must_serve_constraints(m, data, soc_now, t_start, t_end)
 

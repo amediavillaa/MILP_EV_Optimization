@@ -157,7 +157,7 @@ def main(
 ) -> None:
     VOLTAGE           = 400.0
     I_MAX             = 32.0
-    KW_PER_PORT       = 6.0   # grid cap per port: ~47% of installed capacity (400V × 32A = 12.8 kW)
+    KW_PER_PORT       = 6.0   # chosen utilization factor per port (~47% of 400V×32A=12.8 kW at current config)
     V_BESS            = 400.0
     P_BESS_MAX_KW     = 10.0
     I_BESS            = P_BESS_MAX_KW * 1000.0 / V_BESS   # 25 A

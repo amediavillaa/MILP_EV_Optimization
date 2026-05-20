@@ -25,7 +25,7 @@ def _make_mock_runner(bess_net_amps: float, p_buy: float = 0.30,
         "p_sell": {t: 0.50},
         "present_cars": {},
         "assignments": {},
-        "departed_socs": [],
+        "departed_fulfillments": [],
     }
     wrapper.extract_state.return_value = clean_state
     wrapper.to_chargax_actions.return_value = {
@@ -115,7 +115,7 @@ def test_runner_no_bess_step_cost_unaffected():
         "p_sell": {t: 0.50},
         "present_cars": {},
         "assignments": {},
-        "departed_socs": [],
+        "departed_fulfillments": [],
     }
     wrapper.extract_state.return_value = clean_state
     wrapper.to_chargax_actions.return_value = {
