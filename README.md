@@ -116,6 +116,60 @@ HiGHS is the default open-source solver. To use Gurobi, pass `solver="gurobi"` t
 
 ## Running Experiments
 
+### Offline simulation (single-scenario LP)
+
+The offline simulation solves the LP once over a fixed planning horizon with known arrivals, departures, and price schedule — no stochastic environment, no rolling window. It is the simplest way to inspect the LP's decisions and verify constraint behaviour.
+
+```bash
+python -m evopt.experiments.run_tiny_cost_case
+```
+
+Scenario: 3 ports, 8 one-hour steps, 3 cars (all arrive at t=1, deadline t=8). Grid cap 20 kW is tight — simultaneous full-rate charging would require 38.4 kW — so the LP must spread load across steps. Output shows the charging schedule (kW per port per step) and SoC trajectory per car.
+
+To run the LP on a custom scenario from a Python script:
+
+```python
+from evopt.optimization.model import build_ev_lp_model
+from evopt.optimization.solver import solve
+from pyomo.environ import value
+
+data = {
+    "J": 2, "T": 4, "I": 2, "delta_t": 1.0,
+    "P_max": 15_000.0,                         # W
+    "V":    {1: 400.0, 2: 400.0, 3: 400.0},    # 3 = BESS port (always required)
+    "I_max": {1: 32.0, 2: 32.0},
+    "I_high": 0.0, "I_low": 0.0,               # BESS disabled
+    "SoCB_init": 0.0, "SoCB_min": 0.0, "SoCB_max": 0.0,
+    "r_bess_ch":  {t: 1.0 for t in range(1, 5)},
+    "r_bess_dis": {t: 1.0 for t in range(1, 5)},
+    "p_buy":  {1: 0.20, 2: 0.20, 3: 0.15, 4: 0.15},
+    "p_sell": {1: 0.40, 2: 0.40, 3: 0.35, 4: 0.35},
+    "L":      {t: 0.0 for t in range(1, 5)},
+    "assignments": {1: 1, 2: 2},
+    "arr": {1: 1, 2: 1}, "dep": {1: 4, 2: 4},
+    "s_init":    {1: 5.0, 2: 8.0},
+    "s_target":  {1: 20.0, 2: 15.0},
+    "s_cap":     {1: 60.0, 2: 60.0},
+    "s_min":     {1: 0.0,  2: 0.0},
+    "P_car_max": {1: 12_800.0, 2: 12_800.0},
+    "r_car":     {(i, t): 1.0 for i in (1, 2) for t in range(1, 5)},
+}
+
+m = build_ev_lp_model(data)
+solve(m, solver="highs")
+
+for j in m.J_ev:
+    for t in m.T:
+        print(f"port {j} t={t}: {value(m.I_ev[j, t]):.1f} A  "
+              f"({value(m.I_ev[j, t]) * value(m.V[j]) / 1000:.2f} kW)")
+```
+
+**Notes on the data dict:**
+- `V` must include an entry for the BESS port `J+1` even when the BESS is disabled.
+- `assignments` maps car index → port index (1-based). Port assignments are precomputed externally; the LP optimises only the charging currents.
+- `dep[i]` is the latest step at which car `i` can be served. Set it to `T` if the departure time is unknown.
+- To enable the BESS, set `I_high` and `I_low` to the hardware current limits (A) and provide `SoCB_init`, `SoCB_min`, `SoCB_max`.
+
 ### Main benchmark
 
 ```bash
