@@ -5,12 +5,12 @@ add_offline_constraints(m, data, j_bess, eta_bess)
     C1  EV port current upper bound
     C2  BESS current bounds (SoC-dependent ratios)
     C3  Grid power cap
-    C5  BESS SoC dynamics
-    C6  BESS SoC bounds
-    C7  Car SoC dynamics
-    C8  Car SoC bounds
-    C9  Car charging power limit (SoC-dependent)
-    C10 Occupancy enforcement
+    C4  BESS SoC dynamics
+    C5  BESS SoC bounds
+    C6  Car SoC dynamics
+    C7  Car SoC bounds
+    C8  Car charging power limit (SoC-dependent)
+    C9  Occupancy enforcement
 
 add_rolling_constraints(m, data, assignments, soc_now, socb_now, t_start, j_bess,
                         eta_bess)
@@ -45,7 +45,7 @@ def add_offline_constraints(m, data: dict, j_bess: int,
         return ev_power + bess_power + m.L[t] <= m.P_max
     m.grid_cap = Constraint(m.T, rule=grid_cap_rule)
 
-    # C5 — BESS SoC dynamics (raw commanded current, matching Chargax SoC update)
+    # C4 — BESS SoC dynamics (raw commanded current, matching Chargax SoC update)
     # Eta appears only in the objective grid-cost terms, not here.
     def bess_soc_rule(m, t):
         net_in = (m.I_bess_ch[t] - m.I_bess_dis[t]) \
@@ -55,7 +55,7 @@ def add_offline_constraints(m, data: dict, j_bess: int,
         return m.SoCB[t] == m.SoCB[t - 1] + net_in
     m.bess_soc = Constraint(m.T, rule=bess_soc_rule)
 
-    # C6 — BESS SoC bounds
+    # C5 — BESS SoC bounds
     def bess_soc_lb_rule(m, t):
         return m.SoCB[t] >= m.SoCB_min
     def bess_soc_ub_rule(m, t):
@@ -63,7 +63,7 @@ def add_offline_constraints(m, data: dict, j_bess: int,
     m.bess_soc_lb = Constraint(m.T, rule=bess_soc_lb_rule)
     m.bess_soc_ub = Constraint(m.T, rule=bess_soc_ub_rule)
 
-    # C7 — Car SoC dynamics
+    # C6 — Car SoC dynamics
     def car_soc_rule(m, i, t):
         j         = data["assignments"][i]
         energy_in = m.I_ev[j, t] * m.V[j] * (m.delta_t / 1000.0)
@@ -77,7 +77,7 @@ def add_offline_constraints(m, data: dict, j_bess: int,
             return m.soc_car[i, t] == m.soc_car[i, t - 1]
     m.car_soc = Constraint(m.I, m.T, rule=car_soc_rule)
 
-    # C8 — Car SoC bounds
+    # C7 — Car SoC bounds
     def car_soc_lb_rule(m, i, t):
         return m.soc_car[i, t] >= data["s_min"][i]
     def car_soc_ub_rule(m, i, t):
@@ -85,7 +85,7 @@ def add_offline_constraints(m, data: dict, j_bess: int,
     m.car_soc_lb = Constraint(m.I, m.T, rule=car_soc_lb_rule)
     m.car_soc_ub = Constraint(m.I, m.T, rule=car_soc_ub_rule)
 
-    # C9 — Car charging power limit (SoC-dependent)
+    # C8 — Car charging power limit (SoC-dependent)
     def car_power_limit_rule(m, i, t):
         if t < data["arr"][i] or t > data["dep"][i]:
             return Constraint.Skip
@@ -93,7 +93,7 @@ def add_offline_constraints(m, data: dict, j_bess: int,
         return m.I_ev[j, t] * m.V[j] <= data["r_car"][i, t] * data["P_car_max"][i]
     m.car_power_limit = Constraint(m.I, m.T, rule=car_power_limit_rule)
 
-    # C10 — Occupancy enforcement: no current on empty ports
+    # C9 — Occupancy enforcement: no current on empty ports
     def occupancy_rule(m, j, t):
         if value(m.z[j, t]) == 0:
             return m.I_ev[j, t] == 0
@@ -132,7 +132,7 @@ def add_rolling_constraints(
         return ev_power + bess_power + m.L[t] <= m.P_max
     m.grid_cap = Constraint(m.WIN, rule=grid_cap_rule)
 
-    # C5 — BESS SoC dynamics (raw commanded current, warm-started from socb_now)
+    # C4 — BESS SoC dynamics (raw commanded current, warm-started from socb_now)
     def bess_soc_rule(m, t):
         net_in = (m.I_bess_ch[t] - m.I_bess_dis[t]) \
                  * m.V[j_bess] * (m.delta_t / 1000.0)
@@ -141,7 +141,7 @@ def add_rolling_constraints(
         return m.SoCB[t] == m.SoCB[t - 1] + net_in
     m.bess_soc = Constraint(m.WIN, rule=bess_soc_rule)
 
-    # C6 — BESS SoC bounds
+    # C5 — BESS SoC bounds
     def bess_soc_lb_rule(m, t):
         return m.SoCB[t] >= m.SoCB_min
     def bess_soc_ub_rule(m, t):
@@ -149,7 +149,7 @@ def add_rolling_constraints(
     m.bess_soc_lb = Constraint(m.WIN, rule=bess_soc_lb_rule)
     m.bess_soc_ub = Constraint(m.WIN, rule=bess_soc_ub_rule)
 
-    # C7 — Car SoC dynamics (warm-started from soc_now)
+    # C6 — Car SoC dynamics (warm-started from soc_now)
     def car_soc_rule(m, i, t):
         j         = assignments[i]
         energy_in = m.I_ev[j, t] * m.V[j] * (m.delta_t / 1000.0)
@@ -160,7 +160,7 @@ def add_rolling_constraints(
         return m.soc_car[i, t] == m.soc_car[i, t - 1]
     m.car_soc = Constraint(m.I, m.WIN, rule=car_soc_rule)
 
-    # C8 — Car SoC bounds (cap at physical capacity s_cap, not s_target)
+    # C7 — Car SoC bounds (cap at physical capacity s_cap, not s_target)
     def car_soc_lb_rule(m, i, t):
         return m.soc_car[i, t] >= m.s_min[i]
     def car_soc_ub_rule(m, i, t):
@@ -168,7 +168,7 @@ def add_rolling_constraints(
     m.car_soc_lb = Constraint(m.I, m.WIN, rule=car_soc_lb_rule)
     m.car_soc_ub = Constraint(m.I, m.WIN, rule=car_soc_ub_rule)
 
-    # C9 — Car charging power limit (SoC-dependent)
+    # C8 — Car charging power limit (SoC-dependent)
     def car_power_limit_rule(m, i, t):
         if t > data["dep"][i]:
             return Constraint.Skip
@@ -176,7 +176,7 @@ def add_rolling_constraints(
         return m.I_ev[j, t] * m.V[j] <= data["r_car"][i, t] * data["P_car_max"][i]
     m.car_power_limit = Constraint(m.I, m.WIN, rule=car_power_limit_rule)
 
-    # C10 — Occupancy enforcement
+    # C9 — Occupancy enforcement
     def occupancy_rule(m, j, t):
         if value(m.z[j, t]) == 0:
             return m.I_ev[j, t] == 0
@@ -191,7 +191,7 @@ def add_must_serve_constraints(
     t_start:  int,
     t_end:    int,
 ) -> None:
-    """C11 — Must-serve: enforce minimum pace NOW plus hard deadline within window.
+    """C10 — Must-serve: enforce minimum pace NOW plus hard deadline within window.
 
     must_serve_pace: at every re-solve (t_start), each car must charge at least
         needed / steps_until_dep kWh this step.  With receding-horizon re-solves

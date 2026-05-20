@@ -1,16 +1,13 @@
 """
-variables.py — Variable declarations for EV charging MILP models
-=================================================================
-add_offline_variables(m)
-    Adds all variables for the full offline MILP (build_ev_fcfs_model).
-    Requires m.I, m.J, m.T to already be set on the model.
+variables.py — Legacy MILP variable declarations (unused)
+==========================================================
+This module was part of an earlier FCFS-MILP formulation that modelled
+port assignment (y), occupancy (x), and departure triggering (delta) as
+binary decision variables.  The current formulation is a pure LP: port
+assignments are precomputed by ChargaxWrapper, and none of the functions
+here are imported or called.
 
-add_rolling_variables(m)
-    Adds all variables for one MPC step (build_rolling_model).
-    Requires m.I, m.J, m.WIN to already be set on the model.
-    Port assignment (y) is absent — fixed externally on arrival.
-    phi and x are 2-indexed (i, t) rather than 3-indexed (i, j, t)
-    because each car has exactly one fixed port.
+Kept for reference only.
 """
 
 from pyomo.environ import Var, NonNegativeReals, Binary

@@ -1,6 +1,6 @@
 """
-sample_data.py — Scenario for EV charging FCFS MILP
-=====================================================
+run_tiny_cost_case.py — Small reference scenario for the EV charging LP
+========================================================================
 Setup:
   3 ports,  8 time steps (1 h each),  5 cars
 

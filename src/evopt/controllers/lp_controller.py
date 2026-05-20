@@ -73,6 +73,10 @@ class LPController(BaseController):
             "I_low":    state.get("I_low",  self.I_low),
             "p_buy":       state["p_buy"],
             "p_sell":      state["p_sell"],
+            # Background load L: Chargax does not expose a forecast, so we
+            # conservatively assume zero.  This makes the grid-cap constraint
+            # slightly optimistic; the wrapper's to_chargax_actions scales down
+            # any actions that exceed P_max at execution time.
             "L":        {step: 0.0 for step in window},
             "assignments": assignments,
             "dep":      {cid: c["t_max"]    for cid, c in state["present_cars"].items()},
