@@ -26,13 +26,13 @@ class BenchmarkRunner:
         controller.reset()
         self.wrapper.reset()
 
-        step_log:       list[StepRecord] = []
-        departures_soc: list[float]      = []
+        step_log:                list[StepRecord] = []
+        departures_fulfillment:  list[float]      = []
         done = False
 
         while not done:
             clean_state = self.wrapper.extract_state(obs, state)
-            departures_soc.extend(clean_state.get("departed_socs", []))
+            departures_fulfillment.extend(clean_state.get("departed_fulfillments", []))
 
             t0              = time.perf_counter()
             actions         = controller.compute_action(clean_state)
@@ -41,17 +41,33 @@ class BenchmarkRunner:
 
             t       = clean_state["t"]
             delta_t = clean_state["delta_t"]
+
+            # Compute the same grid-cap scale factor used by to_chargax_actions so
+            # that revenue/cost reflect the electricity actually delivered, not the
+            # raw controller request (controllers that exceed P_max are scaled down).
+            p_max_kw = clean_state["P_max"] / 1000.0
+            ev_kw = sum(
+                actions.get(port_j, 0.0) * clean_state["V"][port_j] / 1000.0
+                for port_j in clean_state["assignments"].values()
+            )
+            bess_port = clean_state["J"] + 1
+            bess_net_amps = actions.get(bess_port, 0.0)
+            bess_net_kw = (
+                bess_net_amps * self.wrapper.v_bess / 1000.0
+                if self.wrapper.v_bess is not None else 0.0
+            )
+            grid_draw_kw = ev_kw - bess_net_kw
+            scale = p_max_kw / grid_draw_kw if grid_draw_kw > p_max_kw else 1.0
+
             step_revenue = 0.0
             step_cost    = 0.0
             for car_id, port_j in clean_state["assignments"].items():
-                amps       = actions.get(port_j, 0.0)
+                amps       = actions.get(port_j, 0.0) * scale
                 v          = clean_state["V"][port_j]
                 energy_kwh = amps * v * delta_t / 1000.0
                 step_revenue += energy_kwh * clean_state["p_sell"].get(t, 0.0)
                 step_cost    += energy_kwh * clean_state["p_buy"].get(t, 0.0)
 
-            bess_port = clean_state["J"] + 1
-            bess_net_amps = actions.get(bess_port, 0.0)
             if self.wrapper.v_bess is not None and bess_net_amps != 0.0:
                 bess_net_kwh = -bess_net_amps * self.wrapper.v_bess * delta_t / 1000.0
                 step_cost += bess_net_kwh * clean_state["p_buy"].get(t, 0.0)
@@ -75,11 +91,11 @@ class BenchmarkRunner:
             done = bool(timestep.terminated) or bool(timestep.truncated)
 
         return ChargaxSimResults.from_final_state(
-            controller_name = name if name is not None else controller.__class__.__name__,
-            seed            = seed,
-            state           = state,
-            step_log        = step_log,
-            departures_soc  = departures_soc,
+            controller_name        = name if name is not None else controller.__class__.__name__,
+            seed                   = seed,
+            state                  = state,
+            step_log               = step_log,
+            departures_fulfillment = departures_fulfillment,
         )
 
     def run_benchmark(

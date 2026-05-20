@@ -35,7 +35,9 @@ def build_summary_from_results(results: list[ChargaxSimResults]) -> pd.DataFrame
             "total_cost":            r.total_cost,
             "served_customers":      r.served_customers,
             "rejected_customers":    r.rejected_customers,
-            "mean_soc_at_departure": r.mean_soc_at_departure,
+            "mean_soc_fulfillment":  r.mean_soc_fulfillment,
+            "total_compute_s":       r.total_compute_s,
+            "mean_step_ms":          r.mean_step_ms,
         }
         for r in results
     ]

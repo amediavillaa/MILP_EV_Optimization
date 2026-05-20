@@ -9,11 +9,9 @@ from evopt.optimization.solver import solve
 
 class LPController(BaseController):
     """
-    Stateful rolling MPC controller.
-
-    Re-solves the LP at t=0 and every `horizon_steps` thereafter, caching
-    the plan for intermediate steps. Jointly optimises EV charging and BESS
-    arbitrage in a single LP solve.
+    Rolling MPC controller: re-solves the LP at every timestep using the
+    latest observed state. Jointly optimises EV charging and BESS arbitrage
+    over a `horizon_steps`-step lookahead window in a single LP solve.
     """
 
     def __init__(
@@ -26,6 +24,7 @@ class LPController(BaseController):
         socb_min: float = 3.0,
         socb_max: float = 30.0,
         minutes_per_step: int = 5,
+        must_serve: bool = True,
     ) -> None:
         self.horizon_steps    = horizon_steps
         self.solver           = solver
@@ -35,6 +34,7 @@ class LPController(BaseController):
         self.socb_min         = socb_min
         self.socb_max         = socb_max
         self.minutes_per_step = minutes_per_step
+        self.must_serve       = must_serve
 
     def reset(self) -> None:
         pass
@@ -105,22 +105,27 @@ class LPController(BaseController):
             for cid, c in state["present_cars"].items()
         }
 
-        m = build_rolling_model(data, t, self.horizon_steps, assignments, soc_now, socb_now)
+        bare = not self.must_serve
+        m = build_rolling_model(data, t, self.horizon_steps, assignments, soc_now, socb_now,
+                                bare=bare)
         if m is None:
             return {}
 
         try:
             solve(m, solver=self.solver)
         except Exception:
-            # Must-serve + grid cap can be jointly infeasible in rare tight scenarios;
-            # rebuild without must-serve as a last resort so the step is never skipped.
-            try:
-                m = build_rolling_model(data, t, self.horizon_steps, assignments,
-                                        soc_now, socb_now, bare=True)
-                if m is None:
+            if not bare:
+                # Must-serve + grid cap can be jointly infeasible in rare tight scenarios;
+                # rebuild without must-serve as a last resort so the step is never skipped.
+                try:
+                    m = build_rolling_model(data, t, self.horizon_steps, assignments,
+                                            soc_now, socb_now, bare=True)
+                    if m is None:
+                        return {}
+                    solve(m, solver=self.solver)
+                except Exception:
                     return {}
-                solve(m, solver=self.solver)
-            except Exception:
+            else:
                 return {}
 
         T_max = data["T"]

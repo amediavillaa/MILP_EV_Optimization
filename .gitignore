@@ -208,3 +208,7 @@ __marimo__/
 
 # Git worktrees
 .worktrees/
+
+# Scratch/export files
+*_FINAL.txt
+objective_extracted.txt

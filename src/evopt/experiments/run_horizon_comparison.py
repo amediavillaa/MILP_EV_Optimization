@@ -35,7 +35,7 @@ def main(n_seeds: int = 5, output_dir: Path = Path("results/horizon")) -> None:
     env = Chargax(
         station=station,
         minutes_per_timestep=5,
-        allow_discharging=True,
+        allow_discharging=False,
         renormalize_currents=False,
     )
     wrapper = ChargaxWrapper(
@@ -48,6 +48,7 @@ def main(n_seeds: int = 5, output_dir: Path = Path("results/horizon")) -> None:
         socb_min=3.0,
         socb_max=30.0,
         p_bess_max_kw=P_BESS_MAX_KW,
+        allow_discharging=False,
     )
 
     horizons = [1, 3, 6, 12]

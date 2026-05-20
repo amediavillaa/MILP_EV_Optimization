@@ -24,8 +24,10 @@ class ChargaxWrapper:
         p_max_kw: float,
         num_discretization_levels: int = 10,
         minutes_per_step: int = 5,
-        # EV customer tariff: fixed float (€/kWh) or None to use live Chargax p_sell
+        # EV customer tariff: fixed float (€/kWh), None to use live Chargax p_sell,
+        # or None + ev_markup to use p_buy × ev_markup (dynamic cost-plus pricing)
         ev_tariff: float | None = 0.75,
+        ev_markup: float | None = None,
         # BESS params (optional — if None, BESS is ignored)
         v_bess: float | None = None,
         I_high: float | None = None,   # max BESS charging current (A)
@@ -43,6 +45,7 @@ class ChargaxWrapper:
         self.num_discretization_levels = num_discretization_levels
         self.minutes_per_step          = minutes_per_step
         self.ev_tariff                 = ev_tariff
+        self.ev_markup                 = ev_markup
 
         self.v_bess            = v_bess
         self.I_high            = I_high
@@ -53,10 +56,11 @@ class ChargaxWrapper:
         self.allow_discharging      = allow_discharging
         self.allow_bess_discharging = allow_bess_discharging
 
-        self._charger_to_car: dict[int, int] = {}
-        self._prev_connected: set[int]        = set()
-        self._prev_soc: dict[int, float]      = {}
-        self._next_car_id: int                = 0
+        self._charger_to_car: dict[int, int]    = {}
+        self._prev_connected: set[int]          = set()
+        self._prev_soc: dict[int, float]        = {}
+        self._prev_target: dict[int, float]     = {}
+        self._next_car_id: int                  = 0
 
         if self.v_bess is not None:
             if self.I_high is None or self.I_low is None or self.p_bess_max_kw is None or self.socb_max is None:
@@ -69,6 +73,7 @@ class ChargaxWrapper:
         self._charger_to_car = {}
         self._prev_connected = set()
         self._prev_soc       = {}
+        self._prev_target    = {}
         self._next_car_id    = 0
 
     def extract_state(self, obs: dict, chargax_state) -> dict:
@@ -84,13 +89,17 @@ class ChargaxWrapper:
         new_arrivals = now_connected - self._prev_connected
 
         # Always process departures before arrivals (prevents same-step ID reuse).
-        # Use the SOC captured at the previous step, since the current obs for a
-        # departed charger reflects post-disconnect (stale/zero) values.
-        departed_socs: list[float] = []
+        # Use the SOC and target captured at the previous step, since the current
+        # obs for a departed charger reflects post-disconnect (stale/zero) values.
+        departed_fulfillments: list[float] = []
         for j in sorted(departures):
-            departed_socs.append(self._prev_soc.get(j, float(evse.car_battery_now_kw[j])))
+            soc    = self._prev_soc.get(j, float(evse.car_battery_now_kw[j]))
+            target = self._prev_target.get(j, 0.0)
+            ratio  = min(soc / target, 1.0) if target > 1e-6 else 1.0
+            departed_fulfillments.append(ratio)
             del self._charger_to_car[j]
             self._prev_soc.pop(j, None)
+            self._prev_target.pop(j, None)
 
         for j in sorted(new_arrivals):
             self._charger_to_car[j] = self._next_car_id
@@ -114,8 +123,9 @@ class ChargaxWrapper:
                 "s_cap":    s_cap,
                 "t_max":    t_max,
             }
-            assignments[car_id] = j + 1
-            self._prev_soc[j]   = soc_now  # snapshot for next departure lookup
+            assignments[car_id]   = j + 1
+            self._prev_soc[j]    = soc_now   # snapshot for next departure lookup
+            self._prev_target[j] = s_target
 
         steps_per_hour = 60 // self.minutes_per_step
         future_buy  = [float(p) for p in obs["future_buy_prices"]]
@@ -129,7 +139,12 @@ class ChargaxWrapper:
             for s in range(steps_per_hour):
                 step = t + h * steps_per_hour + s
                 p_buy[step]  = bp
-                p_sell[step] = self.ev_tariff if self.ev_tariff is not None else sp
+                if self.ev_tariff is not None:
+                    p_sell[step] = self.ev_tariff
+                elif self.ev_markup is not None:
+                    p_sell[step] = bp * self.ev_markup
+                else:
+                    p_sell[step] = sp
 
         state: dict = {
             "t":             t,
@@ -142,7 +157,7 @@ class ChargaxWrapper:
             "p_sell":        p_sell,
             "present_cars":  present_cars,
             "assignments":   assignments,
-            "departed_socs": departed_socs,
+            "departed_fulfillments": departed_fulfillments,
         }
 
         if self.v_bess is not None:
