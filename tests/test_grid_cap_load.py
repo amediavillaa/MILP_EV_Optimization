@@ -42,4 +42,5 @@ def test_zero_background_load_does_not_restrict_charging(minimal_bess_data):
     total_ev_power_t1 = sum(
         value(m.I_ev[j, 1]) * value(m.V[j]) for j in m.J_ev
     )
-    assert total_ev_power_t1 >= 0.0  # sanity — no restriction
+    # Car needs 10 kWh, port max 12.8 kW — LP must charge a non-trivial amount
+    assert total_ev_power_t1 > 1000.0

@@ -1,7 +1,7 @@
 """
 constraints.py — Constraint sets for EV charging LP models
 ===========================================================
-add_offline_constraints(m, data, j_bess)
+add_offline_constraints(m, data, j_bess, eta_bess)
     C1  EV port current upper bound
     C2  BESS current bounds (SoC-dependent ratios)
     C3  Grid power cap
