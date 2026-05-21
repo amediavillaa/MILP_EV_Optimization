@@ -92,3 +92,75 @@ def test_save_metadata_contains_keys(tmp_path):
                 "python_version", "ports", "horizons", "n_seeds",
                 "tariff", "bess_enabled", "v2g_enabled", "solver"]:
         assert key in data, f"missing key: {key}"
+
+
+# ── loader ─────────────────────────────────────────────────────────────────
+from evopt.analysis.loader import load_results, clean_results, add_derived_metrics
+
+def test_load_results_csv(tmp_path):
+    df = _sample_df()
+    p = tmp_path / "bench.csv"
+    df.to_csv(p, index=False)
+    loaded = load_results(p)
+    assert len(loaded) == len(df)
+    assert "controller" in loaded.columns
+
+def test_load_results_json(tmp_path):
+    df = _sample_df()
+    p = tmp_path / "bench.json"
+    df.to_json(p, orient="records", indent=2)
+    loaded = load_results(p)
+    assert len(loaded) == len(df)
+
+def test_load_results_unknown_format(tmp_path):
+    p = tmp_path / "bench.txt"
+    p.write_text("hello")
+    with pytest.raises(ValueError, match="Unsupported"):
+        load_results(p)
+
+def test_gap_to_best_always_nonpositive():
+    df = clean_results(_sample_df())
+    assert (df["gap_to_best"] <= 1e-9).all()
+
+def test_gap_to_best_best_controller_is_zero():
+    df = clean_results(_sample_df())
+    maxes = df.groupby(["experiment_id", "seed", "ports"])["gap_to_best"].max()
+    assert (maxes.abs() < 1e-9).all()
+
+def test_gap_to_best_multi_experiment():
+    df1 = _sample_df(); df1["experiment_id"] = "exp_a"
+    df2 = _sample_df(); df2["experiment_id"] = "exp_b"
+    df2["net_profit"] += 1000.0
+    combined = pd.concat([df1, df2], ignore_index=True)
+    cleaned = clean_results(combined)
+    exp_a = cleaned[cleaned["experiment_id"] == "exp_a"]
+    maxes = exp_a.groupby(["seed", "ports"])["gap_to_best"].max()
+    assert (maxes.abs() < 1e-9).all()
+
+def test_clean_results_warns_multi_experiment():
+    df1 = _sample_df(); df1["experiment_id"] = "exp_a"
+    df2 = _sample_df(); df2["experiment_id"] = "exp_b"
+    combined = pd.concat([df1, df2], ignore_index=True)
+    with pytest.warns(UserWarning, match="multiple experiment"):
+        clean_results(combined)
+
+def test_derived_metrics_columns_exist():
+    df = add_derived_metrics(_sample_df())
+    assert "horizon" in df.columns
+    assert "profit_per_compute_s" in df.columns
+
+def test_extract_horizon_in_derived():
+    df = add_derived_metrics(_sample_df())
+    h1_rows = df[df["controller"] == "milp_h1"]
+    assert (h1_rows["horizon"] == 1).all()
+    baseline_rows = df[df["controller"] == "equal_share"]
+    assert baseline_rows["horizon"].isna().all()
+
+def test_profit_per_compute_zero():
+    df = add_derived_metrics(_sample_df())
+    zero_rows = df[df["total_compute_s"] == 0.0]
+    assert zero_rows["profit_per_compute_s"].isna().all()
+
+def test_profit_per_compute_not_inf():
+    df = add_derived_metrics(_sample_df())
+    assert not np.isinf(df["profit_per_compute_s"].fillna(0)).any()
