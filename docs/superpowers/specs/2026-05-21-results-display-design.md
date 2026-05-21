@@ -99,14 +99,21 @@ Two columns added:
 | `horizon` | float | integer from `milp_hN`; `NaN` for baselines |
 | `profit_per_compute_s` | float | `net_profit / total_compute_s`; `NaN` when `total_compute_s == 0` |
 
-`gap_to_best` is **recomputed** in `clean_results()`:
+`gap_to_best` is **recomputed** in `clean_results()`. The benchmark's original computation in `storage.py` is global and does not account for ports or experiment identity, so it can silently mix conditions. The corrected version groups by `(experiment_id, seed, ports)` when `experiment_id` is present, falling back to `(seed, ports)` otherwise:
+
 ```python
+group_cols = (
+    ["experiment_id", "seed", "ports"]
+    if "experiment_id" in df.columns
+    else ["seed", "ports"]
+)
 df["gap_to_best"] = (
     df["net_profit"]
-    - df.groupby(["seed", "ports"])["net_profit"].transform("max")
+    - df.groupby(group_cols)["net_profit"].transform("max")
 )
 ```
-This ensures the gap is always ≤ 0 and is meaningful within the same experimental conditions (same seed + ports).
+
+This guarantees the gap is always ≤ 0, is meaningful only within identical experimental conditions, and remains correct when rows from multiple runs are concatenated into a single DataFrame.
 
 ### Stage 3 — Aggregation (tables)
 
@@ -205,15 +212,22 @@ save_metadata(config: dict, output_dir: Path) -> None
 
 ```python
 load_results(path: Path) -> pd.DataFrame
-    # detects .csv or .json by extension; raises ValueError for unknown formats
+    # Detects .csv or .json by extension; raises ValueError for unknown formats.
+    # Supports concatenated multi-experiment files (multiple experiment_id values).
 
 clean_results(df: pd.DataFrame) -> pd.DataFrame
-    # drops rows where all metric columns are NaN
-    # coerces numeric columns
-    # recomputes gap_to_best within (seed, ports) groups
+    # 1. Drops rows where all metric columns are NaN.
+    # 2. Coerces numeric columns to float.
+    # 3. Recomputes gap_to_best using experiment-aware grouping (see Stage 2).
+    #    Recomputation is necessary because storage.build_summary_from_results()
+    #    computes the gap globally across controllers, ignoring port count and
+    #    experiment identity — making it incorrect when results are concatenated
+    #    across port configs or multiple runs.
+    # 4. If multiple experiment_id values are detected, emits a warning so the
+    #    caller is aware the DataFrame spans more than one experimental condition.
 
 add_derived_metrics(df: pd.DataFrame) -> pd.DataFrame
-    # adds: horizon (float), profit_per_compute_s (NaN-safe)
+    # adds: horizon (float), profit_per_compute_s (NaN-safe, 0-compute → NaN)
 ```
 
 ---
@@ -317,18 +331,25 @@ compare_controllers(
     metric: str,
     controller_a: str,
     controller_b: str,
-    match_on: list[str] = ["seed", "ports"],
+    match_on: list[str] | None = None,
 ) -> dict
-    # inner join on match_on to produce matched pairs
-    # emits warning if n_pairs < n_seeds (some seeds unmatched)
+    # match_on defaults: ["experiment_id", "seed", "ports"] if experiment_id column
+    # exists; else ["seed", "ports"]. Caller may override.
+    #
+    # Performs an inner join on match_on to produce matched pairs. Rows with no
+    # counterpart in the other controller are dropped and a warning is emitted,
+    # because all three statistics (paired t-test, Wilcoxon, paired Cohen's d) require
+    # aligned observations — unmatched rows would silently distort the test.
+    #
     # returns: n_pairs, mean_a, mean_b, mean_diff,
     #          p_ttest, p_wilcoxon, cohen_d, is_significant
 
 compare_all_controllers(
     df: pd.DataFrame,
     metric: str,
-    match_on: list[str] = ["seed", "ports"],
+    match_on: list[str] | None = None,
 ) -> pd.DataFrame
+    # match_on resolved the same way as compare_controllers.
     # pairwise comparison for all controller pairs
     # returns long-form DataFrame (see Stage 4 data contract)
 
@@ -340,7 +361,15 @@ save_significance_summary(results: pd.DataFrame, output_dir: Path) -> None
 ```
 
 Uses `scipy.stats.ttest_rel` for paired t-test and `scipy.stats.wilcoxon` for signed-rank test.
-Cohen's d computed as `mean_diff / pooled_std`.
+
+**Paired Cohen's d** — because all comparisons are made on matched observations (same seed, ports, and experiment configuration), the effect size must use the distribution of paired differences, not pooled variance:
+
+```
+diff_i = metric_a_i - metric_b_i   (for each matched pair i)
+cohen_d = mean(diff) / std(diff)
+```
+
+Using `mean_diff / pooled_std` would be incorrect here: it assumes independent samples, which violates the pairing structure of the benchmark. All three statistics — paired t-test, Wilcoxon signed-rank, and paired Cohen's d — operate exclusively on the vector of within-pair differences. This must be documented clearly in docstrings.
 
 ---
 
@@ -358,7 +387,7 @@ write_markdown_report(
 ```
 
 Report sections in `benchmark_report.md`:
-1. Experiment Configuration (from metadata columns in df)
+1. Experiment Configuration (from metadata columns in df; if multiple `experiment_id` values are present, all are listed and a bold warning is displayed: **"Warning: this report contains data from N distinct experiments. Tables and charts aggregate across all of them. Filter by experiment_id before drawing per-experiment conclusions."**)
 2. Key Findings (auto-generated narrative sentences, e.g.: "The best-performing controller by net_profit is `milp_h12` with mean €X.XX (95% CI [Y, Z]). The lowest-compute controller is `equal_share` at X ms/step. The highest efficiency (net_profit per compute second) is achieved by `milp_h1`. The strongest positive correlation is between `served_customers` and `net_profit` (r = X.XX).")
 3. Best-Performing Controller (table_best embedded)
 4. Full Results Table (table_full embedded)
@@ -388,9 +417,11 @@ CLI entry point only. No analysis logic lives here.
 ```
 python -m evopt.analysis \
     --input  results/benchmark.csv \
-    --output results/figures \
+    [--output results/figures] \
     [--no-radar]
 ```
+
+`--output` is **optional**. When omitted, the output directory defaults to `input_path.parent / "analysis"` (e.g., `--input results/benchmark.csv` → outputs to `results/analysis/`). The directory is created automatically if it does not exist.
 
 Orchestration order:
 1. `loader.load_results` → `clean_results` → `add_derived_metrics`
@@ -439,14 +470,17 @@ Test file: `tests/test_results_display.py`
 - `test_extract_horizon_milp_double_digit` — `milp_h12` → 12
 - `test_extract_horizon_baseline` — `equal_share` → NaN
 - `test_gap_to_best_always_nonpositive` — all values ≤ 0
-- `test_gap_to_best_within_seed_ports` — best controller in group has gap = 0
+- `test_gap_to_best_within_seed_ports` — best controller in group has gap = 0; grouping uses experiment_id when present
+- `test_gap_to_best_multi_experiment` — rows from two different experiment_ids are not cross-compared in the gap calculation
 - `test_profit_per_compute_zero` — `total_compute_s == 0` → NaN, not inf
 - `test_ci95_values` — known inputs produce expected CI bounds
 - `test_derived_metrics_columns_exist` — horizon and profit_per_compute_s present
 - `test_robustness_metrics` — cv, iqr, worst/best case computed correctly
 
 **Statistical tests:**
-- `test_compare_controllers_paired_alignment` — unmatched seeds are dropped before test
+- `test_compare_controllers_paired_alignment` — unmatched seeds are dropped before test; warning is emitted
+- `test_compare_controllers_uses_experiment_id` — when experiment_id column exists, match_on includes it automatically
+- `test_compare_controllers_paired_cohens_d` — cohen_d equals `mean(diff)/std(diff)`, not `mean_diff/pooled_std`
 - `test_compare_controllers_identical` — comparing controller with itself → p=1.0, cohen_d=0
 - `test_compare_all_controllers_shape` — output has correct number of rows
 
@@ -463,6 +497,13 @@ All plotting functions called with a small 3-controller × 2-port × 5-seed samp
 `plot_scaling_compute`, `plot_scaling_profit`, `plot_scaling_served_customers`,
 `plot_pareto_frontier`
 
+**Multi-experiment safety tests:**
+- `test_clean_results_warns_multi_experiment` — `clean_results()` emits a `UserWarning` when DataFrame contains more than one unique `experiment_id`
+- `test_report_warns_multi_experiment` — benchmark_report.md contains the multi-experiment warning string when N > 1 experiment_ids are present
+
+**CLI / usability tests:**
+- `test_default_output_dir` — when `--output` is omitted, outputs land in `input_path.parent / "analysis"`
+
 **Metadata test:**
 - `test_save_metadata_contains_keys` — output JSON has all required keys
 
@@ -478,7 +519,10 @@ python -m evopt.experiments.run_chargax_benchmark \
     --allow-discharging --allow-bess-discharging \
     --save results/benchmark.csv
 
-# Step 2: generate all analysis outputs
+# Step 2: generate all analysis outputs (output defaults to results/analysis/)
+python -m evopt.analysis --input results/benchmark.csv
+
+# Step 2 (explicit output directory)
 python -m evopt.analysis \
     --input  results/benchmark.csv \
     --output results/figures
@@ -486,11 +530,10 @@ python -m evopt.analysis \
 # Optional: skip radar chart
 python -m evopt.analysis \
     --input  results/benchmark.csv \
-    --output results/figures \
     --no-radar
 ```
 
-Outputs written to `results/figures/`:
+Outputs written to `results/analysis/` (default) or the path given by `--output`:
 - `table_full.csv/.tex`, `table_cross_port.csv/.tex`, `table_best.csv/.tex`
 - `table_compute.csv/.tex`, `table_efficiency.csv/.tex`, `table_tradeoff.csv/.tex`
 - `table_robustness.csv/.tex`, `table_significance.csv/.tex`
