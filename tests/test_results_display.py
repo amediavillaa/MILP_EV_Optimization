@@ -141,7 +141,7 @@ def test_clean_results_warns_multi_experiment():
     df1 = _sample_df(); df1["experiment_id"] = "exp_a"
     df2 = _sample_df(); df2["experiment_id"] = "exp_b"
     combined = pd.concat([df1, df2], ignore_index=True)
-    with pytest.warns(UserWarning, match="multiple experiment"):
+    with pytest.warns(UserWarning, match="distinct experiment_id"):
         clean_results(combined)
 
 def test_derived_metrics_columns_exist():

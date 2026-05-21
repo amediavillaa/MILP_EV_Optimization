@@ -58,7 +58,7 @@ def clean_results(df: pd.DataFrame) -> pd.DataFrame:
         unique_exp = df["experiment_id"].nunique()
         if unique_exp > 1:
             warnings.warn(
-                f"DataFrame contains {unique_exp} multiple experiment_id values. "
+                f"DataFrame contains {unique_exp} distinct experiment_id values. "
                 "Tables and charts aggregate across all of them. "
                 "Filter by experiment_id before drawing per-experiment conclusions.",
                 UserWarning,
