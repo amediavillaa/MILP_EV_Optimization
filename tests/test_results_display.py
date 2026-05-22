@@ -409,3 +409,56 @@ def test_save_significance_summary(tmp_path):
     save_significance_summary(results, tmp_path)
     text = (tmp_path / "significance_summary.md").read_text()
     assert "milp" in text.lower() or "controller" in text.lower()
+
+
+# ── report ──────────────────────────────────────────────────────────────────
+from evopt.analysis.report import write_markdown_report, write_html_report
+
+def _make_tables(df, tmp_path):
+    return {
+        "full":       make_full_table(df, tmp_path),
+        "best":       make_best_controller_table(df, tmp_path),
+        "tradeoff":   make_tradeoff_table(df, tmp_path),
+        "robustness": make_robustness_table(df, tmp_path),
+    }
+
+def test_write_markdown_report(tmp_path):
+    df = _ready_df()
+    tables = _make_tables(df, tmp_path)
+    corr = compute_correlation(df)
+    corr_summary = summarise_correlations(corr)
+    sig_results = compare_all_controllers(df, "net_profit")
+    save_significance_summary(sig_results, tmp_path)
+    sig_summary = (tmp_path / "significance_summary.md").read_text()
+    write_markdown_report(df, tables, corr_summary, sig_summary, tmp_path, "exp_a")
+    text = (tmp_path / "benchmark_report.md").read_text()
+    assert "## Experiment Configuration" in text
+    assert "## Key Findings" in text
+    assert "## Robustness" in text
+
+def test_report_warns_multi_experiment(tmp_path):
+    df1 = _sample_df(); df1["experiment_id"] = "exp_a"
+    df2 = _sample_df(); df2["experiment_id"] = "exp_b"
+    combined = add_derived_metrics(clean_results(
+        pd.concat([df1, df2], ignore_index=True)
+    ))
+    tables = _make_tables(combined, tmp_path)
+    corr_summary = summarise_correlations(compute_correlation(combined))
+    write_markdown_report(combined, tables, corr_summary, "", tmp_path, "multi")
+    text = (tmp_path / "benchmark_report.md").read_text()
+    assert "Warning" in text and "experiment" in text.lower()
+
+def test_write_html_report(tmp_path):
+    df = _ready_df()
+    tables = _make_tables(df, tmp_path)
+    # Create placeholder PNGs so embed logic doesn't crash
+    for name in ["profit_by_controller", "profit_vs_horizon", "compute_vs_horizon",
+                 "profit_boxplot", "profit_violin", "compute_boxplot",
+                 "tradeoff_scatter", "pareto_frontier", "correlation_heatmap",
+                 "profit_heatmap", "scaling_compute", "scaling_profit",
+                 "scaling_served_customers"]:
+        (tmp_path / f"{name}.png").write_bytes(b"\x89PNG\r\n")
+    write_html_report(df, tables, tmp_path, "exp_a")
+    html = (tmp_path / "benchmark_report.html").read_text()
+    assert "<html" in html
+    assert "benchmark" in html.lower()
