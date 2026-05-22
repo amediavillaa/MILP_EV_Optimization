@@ -1,6 +1,7 @@
 # tests/test_results_display.py
 from __future__ import annotations
 import math, warnings
+import subprocess, sys
 import numpy as np
 import pandas as pd
 import pytest
@@ -462,3 +463,31 @@ def test_write_html_report(tmp_path):
     html = (tmp_path / "benchmark_report.html").read_text()
     assert "<html" in html
     assert "benchmark" in html.lower()
+
+
+# ── CLI ─────────────────────────────────────────────────────────────────────
+
+def test_default_output_dir(tmp_path):
+    """When --output is omitted, outputs land in input_path.parent/analysis/."""
+    df = _sample_df()
+    csv_path = tmp_path / "bench.csv"
+    df.to_csv(csv_path, index=False)
+    result = subprocess.run(
+        [sys.executable, "-m", "evopt.analysis", "--input", str(csv_path)],
+        capture_output=True, text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert (tmp_path / "analysis" / "benchmark_report.md").exists()
+
+def test_explicit_output_dir(tmp_path):
+    df = _sample_df()
+    csv_path = tmp_path / "bench.csv"
+    df.to_csv(csv_path, index=False)
+    out_dir = tmp_path / "out"
+    result = subprocess.run(
+        [sys.executable, "-m", "evopt.analysis",
+         "--input", str(csv_path), "--output", str(out_dir)],
+        capture_output=True, text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert (out_dir / "benchmark_report.md").exists()
