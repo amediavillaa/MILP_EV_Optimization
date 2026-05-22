@@ -327,3 +327,85 @@ def test_summarise_correlations_markdown(tmp_path):
     text = summarise_correlations(corr)
     assert "positive" in text.lower() or "negative" in text.lower()
     assert "##" in text or "**" in text
+
+
+# ── stats ───────────────────────────────────────────────────────────────────
+from evopt.analysis.stats import (
+    compare_controllers, compare_all_controllers,
+    save_significance_csv, save_significance_summary,
+)
+
+def test_compare_controllers_returns_keys():
+    df = _ready_df()
+    result = compare_controllers(df, "net_profit", "milp_h1", "milp_h6")
+    for key in ["n_pairs", "mean_a", "mean_b", "mean_diff",
+                "p_ttest", "p_wilcoxon", "cohen_d", "is_significant"]:
+        assert key in result, f"missing key: {key}"
+
+def test_compare_controllers_paired_cohens_d():
+    """cohen_d must be mean(diff)/std(diff), not mean_diff/pooled_std.
+
+    A small noise term is added to the offset so that diff.std(ddof=1) > 0
+    and expected_d is finite — otherwise the assertion is numerically
+    unsatisfiable (inf - inf = nan).
+    """
+    rng = np.random.default_rng(42)
+    rows = []
+    for seed in range(20):
+        base = rng.normal(10, 1)
+        noise = rng.normal(0, 0.01)  # keeps diff variance non-zero
+        rows.append({"controller": "A", "seed": seed, "ports": 3,
+                     "experiment_id": "e", "net_profit": base})
+        rows.append({"controller": "B", "seed": seed, "ports": 3,
+                     "experiment_id": "e", "net_profit": base + 2.0 + noise})
+    df = pd.DataFrame(rows)
+    result = compare_controllers(df, "net_profit", "A", "B")
+    diff = np.array([b - a for a, b in zip(
+        df[df["controller"]=="A"].sort_values("seed")["net_profit"].values,
+        df[df["controller"]=="B"].sort_values("seed")["net_profit"].values,
+    )])
+    expected_d = abs(diff.mean() / diff.std(ddof=1))
+    assert abs(abs(result["cohen_d"]) - expected_d) < 1e-6
+
+def test_compare_controllers_identical():
+    df = _ready_df()
+    result = compare_controllers(df, "net_profit", "milp_h1", "milp_h1")
+    assert result["cohen_d"] == pytest.approx(0.0, abs=1e-9)
+    assert result["p_ttest"] == pytest.approx(1.0)
+
+def test_compare_controllers_drops_unmatched_seeds(recwarn):
+    df = _ready_df()
+    # Add an extra seed for milp_h1 only
+    extra = df[df["controller"] == "milp_h1"].iloc[:1].copy()
+    extra["seed"] = 999
+    df2 = pd.concat([df, extra], ignore_index=True)
+    result = compare_controllers(df2, "net_profit", "milp_h1", "milp_h6")
+    # Seed 999 has no match in milp_h6 → n_pairs should be original count
+    assert result["n_pairs"] == df["seed"].nunique() * df["ports"].nunique()
+
+def test_compare_controllers_uses_experiment_id():
+    df = _ready_df()
+    # compare_controllers should auto-detect experiment_id column
+    result = compare_controllers(df, "net_profit", "milp_h1", "milp_h6")
+    assert result["n_pairs"] > 0
+
+def test_compare_all_controllers_shape():
+    df = _ready_df()
+    result = compare_all_controllers(df, "net_profit")
+    controllers = df["controller"].nunique()
+    expected_pairs = controllers * (controllers - 1) // 2
+    assert len(result) == expected_pairs
+
+def test_save_significance_csv(tmp_path):
+    df = _ready_df()
+    results = compare_all_controllers(df, "net_profit")
+    save_significance_csv(results, tmp_path)
+    assert (tmp_path / "table_significance.csv").exists()
+    assert (tmp_path / "table_significance.tex").exists()
+
+def test_save_significance_summary(tmp_path):
+    df = _ready_df()
+    results = compare_all_controllers(df, "net_profit")
+    save_significance_summary(results, tmp_path)
+    text = (tmp_path / "significance_summary.md").read_text()
+    assert "milp" in text.lower() or "controller" in text.lower()
