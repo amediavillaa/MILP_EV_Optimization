@@ -213,3 +213,89 @@ def test_make_robustness_table(tmp_path):
     assert "iqr" in col_str
     assert "worst_case" in col_str
     assert "best_case" in col_str
+
+
+# ── plots (profit charts) ───────────────────────────────────────────────────
+from evopt.analysis.plots import (
+    plot_profit_by_controller,
+    plot_profit_vs_horizon,
+    plot_compute_vs_horizon,
+)
+
+def _plot_df():
+    return add_derived_metrics(clean_results(_sample_df()))
+
+def _png_nonempty(path):
+    assert path.exists(), f"Missing: {path}"
+    assert path.stat().st_size > 0, f"Empty file: {path}"
+
+def test_plot_profit_by_controller(tmp_path):
+    plot_profit_by_controller(_plot_df(), tmp_path)
+    _png_nonempty(tmp_path / "profit_by_controller.png")
+
+def test_plot_profit_vs_horizon(tmp_path):
+    plot_profit_vs_horizon(_plot_df(), tmp_path)
+    _png_nonempty(tmp_path / "profit_vs_horizon.png")
+
+def test_plot_compute_vs_horizon(tmp_path):
+    plot_compute_vs_horizon(_plot_df(), tmp_path)
+    _png_nonempty(tmp_path / "compute_vs_horizon.png")
+
+# ── plots (distribution + scatter) ─────────────────────────────────────────
+from evopt.analysis.plots import (
+    plot_profit_boxplot, plot_profit_violin, plot_compute_boxplot,
+    plot_tradeoff_scatter, plot_pareto_frontier,
+)
+
+def test_plot_profit_boxplot(tmp_path):
+    plot_profit_boxplot(_plot_df(), tmp_path)
+    _png_nonempty(tmp_path / "profit_boxplot.png")
+
+def test_plot_profit_violin(tmp_path):
+    plot_profit_violin(_plot_df(), tmp_path)
+    _png_nonempty(tmp_path / "profit_violin.png")
+
+def test_plot_compute_boxplot(tmp_path):
+    plot_compute_boxplot(_plot_df(), tmp_path)
+    _png_nonempty(tmp_path / "compute_boxplot.png")
+
+def test_plot_tradeoff_scatter(tmp_path):
+    plot_tradeoff_scatter(_plot_df(), tmp_path)
+    _png_nonempty(tmp_path / "tradeoff_scatter.png")
+
+def test_plot_pareto_frontier(tmp_path):
+    plot_pareto_frontier(_plot_df(), tmp_path)
+    _png_nonempty(tmp_path / "pareto_frontier.png")
+
+# ── plots (heatmaps + scaling) ──────────────────────────────────────────────
+from evopt.analysis.plots import (
+    plot_correlation_heatmap, plot_profit_heatmap,
+    plot_scaling_compute, plot_scaling_profit, plot_scaling_served_customers,
+)
+
+def test_plot_correlation_heatmap(tmp_path):
+    plot_correlation_heatmap(_plot_df(), tmp_path)
+    _png_nonempty(tmp_path / "correlation_heatmap.png")
+
+def test_plot_profit_heatmap(tmp_path):
+    plot_profit_heatmap(_plot_df(), tmp_path)
+    _png_nonempty(tmp_path / "profit_heatmap.png")
+
+def test_plot_scaling_compute(tmp_path):
+    plot_scaling_compute(_plot_df(), tmp_path)
+    _png_nonempty(tmp_path / "scaling_compute.png")
+
+def test_plot_scaling_profit(tmp_path):
+    plot_scaling_profit(_plot_df(), tmp_path)
+    _png_nonempty(tmp_path / "scaling_profit.png")
+
+def test_plot_scaling_served_customers(tmp_path):
+    plot_scaling_served_customers(_plot_df(), tmp_path)
+    _png_nonempty(tmp_path / "scaling_served_customers.png")
+
+# ── plots (radar chart) ─────────────────────────────────────────────────────
+from evopt.analysis.plots import plot_radar
+
+def test_plot_radar(tmp_path):
+    plot_radar(_plot_df(), tmp_path)
+    _png_nonempty(tmp_path / "radar.png")
