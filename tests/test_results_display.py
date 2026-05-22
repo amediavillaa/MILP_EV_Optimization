@@ -299,3 +299,31 @@ from evopt.analysis.plots import plot_radar
 def test_plot_radar(tmp_path):
     plot_radar(_plot_df(), tmp_path)
     _png_nonempty(tmp_path / "radar.png")
+
+# ── correlation ─────────────────────────────────────────────────────────────
+from evopt.analysis.correlation import (
+    compute_correlation, save_correlation_csv, summarise_correlations,
+)
+
+def test_compute_correlation_shape():
+    df = _ready_df()
+    corr = compute_correlation(df)
+    assert corr.shape[0] == corr.shape[1]          # square
+    assert np.allclose(corr.values.diagonal(), 1.0)
+
+def test_compute_correlation_excludes_seed_ports():
+    df = _ready_df()
+    corr = compute_correlation(df)
+    assert "seed" not in corr.columns
+    assert "ports" not in corr.columns
+
+def test_save_correlation_csv(tmp_path):
+    corr = compute_correlation(_ready_df())
+    save_correlation_csv(corr, tmp_path)
+    assert (tmp_path / "correlation_matrix.csv").exists()
+
+def test_summarise_correlations_markdown(tmp_path):
+    corr = compute_correlation(_ready_df())
+    text = summarise_correlations(corr)
+    assert "positive" in text.lower() or "negative" in text.lower()
+    assert "##" in text or "**" in text
