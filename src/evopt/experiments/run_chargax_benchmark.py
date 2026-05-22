@@ -1,10 +1,10 @@
 """
 run_chargax_benchmark.py — Run all controllers through Chargax and print summary tables.
 
-Usage:
+Usage examples (see README for more details):
     python -m evopt.experiments.run_chargax_benchmark
     python -m evopt.experiments.run_chargax_benchmark --seeds 3
-    python -m evopt.experiments.run_chargax_benchmark --tariff dynamic
+    python -m evopt.experiments.run_chargax_benchmark --tariff dynamic:1.3
     python -m evopt.experiments.run_chargax_benchmark --horizons 1 6 12 24
     python -m evopt.experiments.run_chargax_benchmark --ports 3 6 12
     python -m evopt.experiments.run_chargax_benchmark --ports 3 6 12 --horizons 1 12
@@ -26,6 +26,9 @@ from evopt.controllers.equal_share import EqualShareController
 from evopt.controllers.lp_controller import LPController
 from evopt.env.chargax_wrapper import ChargaxWrapper
 from evopt.experiments.station_configs import build_simple_station, build_station_with_battery
+
+import sys
+from evopt.analysis.utils import format_experiment_id, save_metadata
 
 _METRICS = [
     "net_profit", "total_revenue", "total_cost",
@@ -154,6 +157,8 @@ def main(
     allow_discharging:      bool             = False,
     allow_bess_discharging: bool             = False,
     must_serve:             bool             = True,
+    save_path:              str | None       = None,
+    cli_command:            str              = "",
 ) -> None:
     VOLTAGE           = 400.0
     I_MAX             = 32.0
@@ -166,6 +171,17 @@ def main(
         horizons = [12]
     if ports is None:
         ports = [3]
+
+    tariff_str = (
+        f"dynamic:{ev_markup}" if ev_markup is not None
+        else "dynamic" if ev_tariff is None
+        else str(ev_tariff)
+    )
+    experiment_id = format_experiment_id(
+        ports=ports, horizons=horizons, tariff=tariff_str,
+    )
+
+    per_port_raw_dfs: list[pd.DataFrame] = []
 
     print(f"Ports     : {ports}")
     print(f"Horizons  : {horizons}")
@@ -200,6 +216,14 @@ def main(
             allow_bess_discharging=allow_bess_discharging,
             must_serve=must_serve,
         )
+        raw = df.copy()
+        raw["ports"]         = n_ports
+        raw["experiment_id"] = experiment_id
+        raw["tariff"]        = tariff_str
+        raw["bess_enabled"]  = use_bess
+        raw["v2g_enabled"]   = allow_discharging and use_bess
+        raw["solver"]        = "highs"
+        per_port_raw_dfs.append(raw)
         summary = _make_summary(df)
         print(summary.to_string())
 
@@ -226,6 +250,28 @@ def main(
         print(pivot.to_string())
         print()
 
+    if save_path is not None:
+        from pathlib import Path
+        save_p = Path(save_path)
+        save_p.parent.mkdir(parents=True, exist_ok=True)
+        combined_raw = pd.concat(per_port_raw_dfs, ignore_index=True)
+        combined_raw.to_csv(save_p, index=False)
+        print(f"\nResults saved to {save_p}")
+        save_metadata(
+            config={
+                "experiment_id":  experiment_id,
+                "cli_command":    cli_command,
+                "ports":          ports,
+                "horizons":       horizons,
+                "n_seeds":        n_seeds,
+                "tariff":         tariff_str,
+                "bess_enabled":   use_bess,
+                "v2g_enabled":    allow_discharging and use_bess,
+                "solver":         "highs",
+            },
+            output_dir=save_p.parent,
+        )
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -245,6 +291,11 @@ if __name__ == "__main__":
                         help="Enable V2G: bidirectional EVSE action space (default: disabled)")
     parser.add_argument("--no-must-serve", action="store_true", default=False,
                         help="Disable must-serve constraints in the LP (default: enabled)")
+    parser.add_argument(
+        "--save", type=str, default=None, metavar="PATH",
+        help="Save raw per-seed results as CSV to PATH (e.g. results/benchmark.csv). "
+             "A metadata.json sidecar is written to the same directory.",
+    )
     args = parser.parse_args()
     ev_tariff, ev_markup = _parse_tariff(args.tariff)
     main(
@@ -257,4 +308,6 @@ if __name__ == "__main__":
         allow_bess_discharging=args.allow_bess_discharging,
         ports=args.ports,
         must_serve=not args.no_must_serve,
+        save_path=args.save,
+        cli_command=" ".join(sys.argv),
     )
