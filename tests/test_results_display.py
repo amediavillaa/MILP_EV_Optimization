@@ -164,3 +164,52 @@ def test_profit_per_compute_zero():
 def test_profit_per_compute_not_inf():
     df = add_derived_metrics(_sample_df())
     assert not np.isinf(df["profit_per_compute_s"].fillna(0)).any()
+
+
+# ── tables ─────────────────────────────────────────────────────────────────
+import matplotlib
+matplotlib.use("Agg")
+from evopt.analysis.tables import (
+    make_full_table, make_cross_port_table, make_best_controller_table,
+    make_compute_table, make_efficiency_table, make_tradeoff_table,
+    make_robustness_table,
+)
+
+def _ready_df():
+    return add_derived_metrics(clean_results(_sample_df()))
+
+def test_make_full_table_produces_csv(tmp_path):
+    result = make_full_table(_ready_df(), tmp_path)
+    assert (tmp_path / "table_full.csv").exists()
+    assert len(result) > 0
+
+def test_make_full_table_produces_tex(tmp_path):
+    make_full_table(_ready_df(), tmp_path)
+    tex = (tmp_path / "table_full.tex").read_text()
+    assert len(tex) > 10
+
+def test_make_full_table_has_stat_columns(tmp_path):
+    result = make_full_table(_ready_df(), tmp_path)
+    cols = result.columns.tolist()
+    col_str = str(cols)
+    for stat in ["mean", "std", "min", "max", "median", "n", "ci_lower", "ci_upper"]:
+        assert stat in col_str, f"missing stat column: {stat}"
+
+def test_make_cross_port_table(tmp_path):
+    result = make_cross_port_table(_ready_df(), tmp_path)
+    assert (tmp_path / "table_cross_port.csv").exists()
+    assert (tmp_path / "table_cross_port.tex").exists()
+
+def test_make_best_controller_table(tmp_path):
+    result = make_best_controller_table(_ready_df(), tmp_path)
+    assert (tmp_path / "table_best.csv").exists()
+    assert len(result) == _ready_df()["ports"].nunique()
+
+def test_make_robustness_table(tmp_path):
+    result = make_robustness_table(_ready_df(), tmp_path)
+    assert (tmp_path / "table_robustness.csv").exists()
+    col_str = str(result.columns.tolist())
+    assert "cv" in col_str
+    assert "iqr" in col_str
+    assert "worst_case" in col_str
+    assert "best_case" in col_str
