@@ -142,6 +142,55 @@ def plot_compute_vs_horizon(df: pd.DataFrame, output_dir: Path) -> None:
     save_figure(fig, Path(output_dir) / "compute_vs_horizon.png")
 
 
+def plot_horizon_comparison(df: pd.DataFrame, output_dir: Path) -> None:
+    """Two-panel figure comparing MILP horizons: net profit (left) and
+    mean step time on a log scale (right). Lines are grouped by port count.
+
+    Skips silently when no MILP data is present.
+    """
+    apply_pub_style()
+    agg_profit = _horizon_agg(df, "net_profit")
+    if agg_profit.empty:
+        return
+
+    ports_vals = sorted(agg_profit["ports"].unique())
+    palette = colorblind_palette(len(ports_vals))
+    agg_compute = _horizon_agg(df, "mean_step_ms")
+
+    fig, (ax_l, ax_r) = plt.subplots(1, 2, figsize=(10, 4))
+
+    # Left panel: net profit with 95% CI fill bands
+    for port, color in zip(ports_vals, palette):
+        sub = agg_profit[agg_profit["ports"] == port].sort_values("horizon")
+        ax_l.plot(sub["horizon"], sub["mean"], marker="o", color=color,
+                  label=f"{port} ports")
+        ax_l.fill_between(
+            sub["horizon"],
+            sub["mean"] - sub["ci"],
+            sub["mean"] + sub["ci"],
+            alpha=0.2, color=color,
+        )
+    ax_l.set_xlabel("Horizon (steps)")
+    ax_l.set_ylabel("Net Profit (€)")
+
+    # Right panel: mean step time, log scale, CI error bars
+    if not agg_compute.empty:
+        for port, color in zip(ports_vals, palette):
+            sub = agg_compute[agg_compute["ports"] == port].sort_values("horizon")
+            ax_r.errorbar(
+                sub["horizon"], sub["mean"], yerr=sub["ci"],
+                marker="s", capsize=4, color=color, label=f"{port} ports",
+            )
+    ax_r.set_yscale("log")
+    ax_r.set_xlabel("Horizon (steps)")
+    ax_r.set_ylabel("Mean Step Time (ms)")
+
+    # Shared legend outside the right panel
+    ax_r.legend(title="Ports", bbox_to_anchor=(1.02, 1), loc="upper left", fontsize=9)
+
+    save_figure(fig, Path(output_dir) / "horizon_comparison.png")
+
+
 def plot_profit_boxplot(df: pd.DataFrame, output_dir: Path) -> None:
     """Boxplot of per-seed net_profit per controller, coloured by ports."""
     apply_pub_style()

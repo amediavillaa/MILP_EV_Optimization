@@ -268,6 +268,23 @@ def test_plot_pareto_frontier(tmp_path):
     plot_pareto_frontier(_plot_df(), tmp_path)
     _png_nonempty(tmp_path / "pareto_frontier.png")
 
+# ── plot_horizon_comparison ─────────────────────────────────────────────────
+from evopt.analysis.plots import plot_horizon_comparison
+
+
+def test_plot_horizon_comparison_creates_png(tmp_path):
+    df = _milp_df()
+    plot_horizon_comparison(df, tmp_path)
+    assert (tmp_path / "horizon_comparison.png").exists()
+
+
+def test_plot_horizon_comparison_no_file_when_no_milp(tmp_path):
+    df = _milp_df()
+    df["horizon"] = float("nan")
+    plot_horizon_comparison(df, tmp_path)
+    assert not (tmp_path / "horizon_comparison.png").exists()
+
+
 # ── plots (heatmaps + scaling) ──────────────────────────────────────────────
 from evopt.analysis.plots import (
     plot_correlation_heatmap, plot_profit_heatmap,
