@@ -84,3 +84,12 @@ def test_soc_trajectories_pdf(tmp_path, res):
     assert pdf.exists()
     assert pdf.stat().st_size > 1000
     assert pdf.read_bytes()[:4] == b"%PDF"
+
+
+def test_charging_schedule_pdf(tmp_path, res):
+    from evopt.experiments.tiny_case_figures import plot_charging_schedule
+    plot_charging_schedule(res, tmp_path)
+    pdf = tmp_path / "charging_schedule.pdf"
+    assert pdf.exists()
+    assert pdf.stat().st_size > 1000
+    assert pdf.read_bytes()[:4] == b"%PDF"

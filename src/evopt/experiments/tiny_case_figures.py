@@ -217,3 +217,40 @@ def plot_soc_trajectories(res: TinyResults, out: Path) -> None:
     ax.set_xticklabels(["t0"] + [f"t{t}" for t in range(1, res.T + 1)])
     ax.legend(loc="upper left", fontsize=9)
     save_figure(fig, Path(out) / "soc_trajectories.pdf")
+
+
+def plot_charging_schedule(res: TinyResults, out: Path) -> None:
+    apply_pub_style()
+    T = res.T
+    ts = np.arange(1, T + 1)
+    fig, ax = plt.subplots(figsize=(6.5, 4))
+
+    # Four stack segments using module-level _C colour dict
+    p1_car1 = np.array([res.power[1, t] if t <= 4 else 0.0 for t in range(1, T + 1)])
+    p1_car5 = np.array([res.power[1, t] if t >= 5 else 0.0 for t in range(1, T + 1)])
+    p2      = np.array([res.power[2, t] for t in range(1, T + 1)])
+    p3      = np.array([res.power[3, t] for t in range(1, T + 1)])
+
+    bar_kw = dict(width=0.6, align="center")
+    ax.bar(ts, p1_car1, label="Port 1 / Car 1 (t1–t4)", color=_C[1], **bar_kw)
+    ax.bar(ts, p1_car5, bottom=p1_car1,
+           label="Port 1 / Car 5 (t5–t8)", color=_C[4], **bar_kw)
+    ax.bar(ts, p2, bottom=p1_car1 + p1_car5,
+           label="Port 2 / Car 2", color=_C[2], **bar_kw)
+    ax.bar(ts, p3, bottom=p1_car1 + p1_car5 + p2,
+           label="Port 3 / Car 3", color=_C[3], **bar_kw)
+
+    # Grid cap line
+    ax.axhline(20.0, color="#d62728", linestyle="--", linewidth=1.5,
+               label="Grid cap (20 kW)")
+
+    # Boundary between Car 1 and Car 5 phases
+    ax.axvline(4.5, color="#888888", linestyle="--", linewidth=1)
+
+    ax.set_ylim(0, 25)
+    ax.set_xlabel("Timestep (h)")
+    ax.set_ylabel("Charging Power (kW)")
+    ax.set_xticks(range(1, T + 1))
+    ax.set_xticklabels([f"t{t}" for t in range(1, T + 1)])
+    ax.legend(fontsize=8, loc="upper right")
+    save_figure(fig, Path(out) / "charging_schedule.pdf")
