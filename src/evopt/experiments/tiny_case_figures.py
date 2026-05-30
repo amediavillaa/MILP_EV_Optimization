@@ -14,11 +14,7 @@ from evopt.analysis.utils import (
     colorblind_palette,
     save_figure,
 )
-from evopt.experiments.run_tiny_cost_case import (
-    _DATA,
-    _LP_CAR_LABELS,
-    _REJECTED,
-)
+from evopt.experiments.run_tiny_cost_case import _DATA
 from evopt.optimization.model import build_ev_lp_model
 from evopt.optimization.solver import solve
 
@@ -132,11 +128,11 @@ def write_table_solution(res: TinyResults, out: Path) -> None:
     # CSV: two sections separated by blank line
     csv_lines = []
     csv_lines.append("# Summary metrics")
-    csv_lines.append(summary.to_csv(index=False).strip())
+    csv_lines.append(summary.to_csv(index=False, lineterminator='\n').strip())
     csv_lines.append("")
     csv_lines.append("# Charging schedule (kW)")
-    csv_lines.append(schedule.to_csv(index=False).strip())
-    (out / "table_solution.csv").write_text("\n".join(csv_lines), encoding="utf-8")
+    csv_lines.append(schedule.to_csv(index=False, lineterminator='\n').strip())
+    (out / "table_solution.csv").write_text("\n".join(csv_lines), encoding="utf-8", newline='\n')
 
     # LaTeX: summary table only (schedule is too wide for single-column paper)
     (out / "table_solution.tex").write_text(_to_booktabs(summary), encoding="utf-8")
