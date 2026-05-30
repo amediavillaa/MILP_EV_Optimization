@@ -191,6 +191,69 @@ def plot_horizon_comparison(df: pd.DataFrame, output_dir: Path) -> None:
     save_figure(fig, Path(output_dir) / "horizon_comparison.png")
 
 
+def plot_horizon_full(df: pd.DataFrame, output_dir: Path) -> None:
+    """2×2 panel figure: net profit, mean step time (log), served customers,
+    and mean SoC fulfillment vs MILP horizon. Lines grouped by port count.
+
+    Panels whose metric column is absent from df are hidden. Skips silently
+    when no MILP data is present.
+    """
+    apply_pub_style()
+    agg_profit = _horizon_agg(df, "net_profit")
+    if agg_profit.empty:
+        return
+
+    ports_vals = sorted(agg_profit["ports"].unique())
+    palette = colorblind_palette(len(ports_vals))
+
+    _PANELS = [
+        ("net_profit",           "Net Profit (€)",        "linear"),
+        ("mean_step_ms",         "Mean Step Time (ms)",   "log"),
+        ("served_customers",     "Served Customers",      "linear"),
+        ("mean_soc_fulfillment", "Mean SoC Fulfillment",  "linear"),
+    ]
+
+    fig, axes = plt.subplots(2, 2, figsize=(10, 8))
+    axes_flat = axes.flatten()
+
+    legend_handle_ax = None
+    for ax, (metric, ylabel, scale) in zip(axes_flat, _PANELS):
+        agg = _horizon_agg(df, metric)
+        if agg.empty:
+            ax.set_visible(False)
+            continue
+        for port, color in zip(ports_vals, palette):
+            sub = agg[agg["ports"] == port].sort_values("horizon")
+            if scale == "log":
+                ax.errorbar(
+                    sub["horizon"], sub["mean"], yerr=sub["ci"],
+                    marker="s", capsize=4, color=color, label=f"{port} ports",
+                )
+            else:
+                ax.plot(sub["horizon"], sub["mean"], marker="o",
+                        color=color, label=f"{port} ports")
+                ax.fill_between(
+                    sub["horizon"],
+                    sub["mean"] - sub["ci"],
+                    sub["mean"] + sub["ci"],
+                    alpha=0.2, color=color,
+                )
+        ax.set_yscale(scale)
+        ax.set_xlabel("Horizon (steps)")
+        ax.set_ylabel(ylabel)
+        legend_handle_ax = ax
+
+    # Place single legend outside the last visible panel
+    if legend_handle_ax is not None:
+        handles, labels = legend_handle_ax.get_legend_handles_labels()
+        legend_handle_ax.legend(
+            handles, labels, title="Ports",
+            bbox_to_anchor=(1.02, 1), loc="upper left", fontsize=9,
+        )
+
+    save_figure(fig, Path(output_dir) / "horizon_full.png")
+
+
 def plot_profit_boxplot(df: pd.DataFrame, output_dir: Path) -> None:
     """Boxplot of per-seed net_profit per controller, coloured by ports."""
     apply_pub_style()

@@ -565,3 +565,27 @@ def test_horizon_agg_returns_empty_for_missing_metric():
     df = _milp_df()
     agg = _horizon_agg(df, "nonexistent_column")
     assert agg.empty
+
+
+# ── plot_horizon_full ───────────────────────────────────────────────────────
+from evopt.analysis.plots import plot_horizon_full
+
+
+def test_plot_horizon_full_creates_png(tmp_path):
+    df = _milp_df()
+    plot_horizon_full(df, tmp_path)
+    assert (tmp_path / "horizon_full.png").exists()
+
+
+def test_plot_horizon_full_no_file_when_no_milp(tmp_path):
+    df = _milp_df()
+    df["horizon"] = float("nan")
+    plot_horizon_full(df, tmp_path)
+    assert not (tmp_path / "horizon_full.png").exists()
+
+
+def test_plot_horizon_full_handles_missing_metric(tmp_path):
+    df = _milp_df().drop(columns=["mean_soc_fulfillment"])
+    plot_horizon_full(df, tmp_path)
+    # Should still create the figure with the remaining 3 panels
+    assert (tmp_path / "horizon_full.png").exists()
