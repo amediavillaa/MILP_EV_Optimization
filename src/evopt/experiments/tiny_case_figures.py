@@ -60,6 +60,15 @@ _SCENARIO_COLS = ["Car", "Port", "Arrival", "Departure",
                   r"$s_0$ (kWh)", r"$s^*$ (kWh)", "Status"]
 
 
+# LP car index, display label, arrival t, departure t
+_CAR_META = [
+    (1, "Car 1 (port 1, dep t4)", 1, 4),
+    (2, "Car 2 (port 2)",          1, 8),
+    (3, "Car 3 (port 3)",          1, 8),
+    (4, "Car 5 (port 1, arr t5)",  5, 8),
+]
+
+
 def _to_booktabs(df: pd.DataFrame) -> str:
     """Return a booktabs LaTeX tabular string for *df*."""
     col_fmt = "l" + "r" * (len(df.columns) - 1)
@@ -166,3 +175,45 @@ def extract_results(m, data: dict) -> TinyResults:
         profit=revenue - cost,
         data=data,
     )
+
+
+def plot_soc_trajectories(res: TinyResults, out: Path) -> None:
+    apply_pub_style()
+    fig, ax = plt.subplots(figsize=(6.5, 4))
+    data = res.data
+
+    for (lp_i, label, arr, dep) in _CAR_META:
+        color = _C[lp_i]
+        ls = "--" if lp_i == 4 else "-"
+        s_init = data["s_init"][lp_i]
+        s_tgt  = data["s_target"][lp_i]
+
+        # Build (x, y) pairs: prepend initial SoC just before first active step
+        xs = [arr - 1] + list(range(arr, dep + 1))
+        ys = [s_init]  + [res.soc[lp_i, t] for t in range(arr, dep + 1)]
+
+        ax.plot(xs, ys, color=color, linestyle=ls, marker="o",
+                markersize=3, label=label)
+
+        # Dotted target line spanning the dwell window
+        ax.hlines(s_tgt, arr - 1, dep, colors=color, linestyles=":",
+                  linewidth=1, alpha=0.55)
+
+        # Star at first timestep target is reached
+        for t in range(arr, dep + 1):
+            if res.soc[lp_i, t] >= s_tgt - 1e-3:
+                ax.plot(t, res.soc[lp_i, t], "*", color=color, markersize=10)
+                break
+
+    # Vertical boundary between Car 1 departure and Car 5 arrival
+    ax.axvline(4.5, color="#888888", linestyle="--", linewidth=1)
+    ymax = ax.get_ylim()[1]
+    ax.text(4.6, ymax * 0.97, "Car 1 dep\nCar 5 arr",
+            fontsize=8, color="#666666", va="top")
+
+    ax.set_xlabel("Timestep (h)")
+    ax.set_ylabel("State of Charge (kWh)")
+    ax.set_xticks(range(0, res.T + 1))
+    ax.set_xticklabels(["t0"] + [f"t{t}" for t in range(1, res.T + 1)])
+    ax.legend(loc="upper left", fontsize=9)
+    save_figure(fig, Path(out) / "soc_trajectories.pdf")

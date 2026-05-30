@@ -75,3 +75,12 @@ def test_table_solution_tex(tmp_path, res):
     assert r"\toprule" in tex
     assert r"\bottomrule" in tex
     assert "Revenue" in tex
+
+
+def test_soc_trajectories_pdf(tmp_path, res):
+    from evopt.experiments.tiny_case_figures import plot_soc_trajectories
+    plot_soc_trajectories(res, tmp_path)
+    pdf = tmp_path / "soc_trajectories.pdf"
+    assert pdf.exists()
+    assert pdf.stat().st_size > 1000
+    assert pdf.read_bytes()[:4] == b"%PDF"
