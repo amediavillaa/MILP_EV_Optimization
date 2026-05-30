@@ -15,6 +15,10 @@ from evopt.analysis.utils import apply_pub_style, colorblind_palette, save_figur
 def _horizon_agg(df: pd.DataFrame, metric: str) -> pd.DataFrame:
     """Aggregate *metric* by (horizon, ports) for MILP-only rows.
 
+    MILP rows are identified by a non-NaN ``horizon`` value, as populated by
+    ``add_derived_metrics`` via ``extract_horizon``. Non-MILP controllers
+    (e.g. ``equal_share``) have ``horizon=NaN`` and are excluded.
+
     Returns an empty DataFrame when no MILP data exists or the metric
     column is absent.
     """
@@ -172,6 +176,7 @@ def plot_horizon_comparison(df: pd.DataFrame, output_dir: Path) -> None:
         )
     ax_l.set_xlabel("Horizon (steps)")
     ax_l.set_ylabel("Net Profit (€)")
+    ax_l.set_title("Net Profit (95% CI)")
 
     # Right panel: mean step time, log scale, CI error bars
     if not agg_compute.empty:
@@ -181,12 +186,14 @@ def plot_horizon_comparison(df: pd.DataFrame, output_dir: Path) -> None:
                 sub["horizon"], sub["mean"], yerr=sub["ci"],
                 marker="s", capsize=4, color=color, label=f"{port} ports",
             )
-    ax_r.set_yscale("log")
-    ax_r.set_xlabel("Horizon (steps)")
-    ax_r.set_ylabel("Mean Step Time (ms)")
-
-    # Shared legend outside the right panel
-    ax_r.legend(title="Ports", bbox_to_anchor=(1.02, 1), loc="upper left", fontsize=9)
+        ax_r.set_yscale("log")
+        ax_r.set_xlabel("Horizon (steps)")
+        ax_r.set_ylabel("Mean Step Time (ms)")
+        ax_r.set_title("Compute Time (95% CI)")
+        ax_r.legend(title="Ports", bbox_to_anchor=(1.02, 1), loc="upper left", fontsize=9)
+    else:
+        ax_r.set_visible(False)
+        ax_l.legend(title="Ports", bbox_to_anchor=(1.02, 1), loc="upper left", fontsize=9)
 
     save_figure(fig, Path(output_dir) / "horizon_comparison.png")
 
@@ -241,6 +248,7 @@ def plot_horizon_full(df: pd.DataFrame, output_dir: Path) -> None:
         ax.set_yscale(scale)
         ax.set_xlabel("Horizon (steps)")
         ax.set_ylabel(ylabel)
+        ax.set_title(ylabel)
         legend_handle_ax = ax
 
     # Place single legend outside the last visible panel
