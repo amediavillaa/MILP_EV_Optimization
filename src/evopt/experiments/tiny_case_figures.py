@@ -351,3 +351,32 @@ def plot_scenario_gantt(res: TinyResults, out: Path) -> None:
     ax.tick_params(axis="y", length=0)
     ax.legend(fontsize=8, loc="lower right")
     save_figure(fig, Path(out) / "scenario_gantt.pdf")
+
+
+def main(out_dir: Path = Path("results/tiny_cost_case")) -> None:
+    """Generate all publication figures and tables for the tiny cost case.
+
+    Parameters
+    ----------
+    out_dir : Path
+        Output directory for figures and tables. Default: results/tiny_cost_case
+    """
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    m = build_ev_lp_model(_DATA)
+    solve(m, solver="highs")
+    res = extract_results(m, _DATA)
+
+    plot_soc_trajectories(res, out_dir)
+    plot_charging_schedule(res, out_dir)
+    plot_tariff_overlay(res, out_dir)
+    plot_scenario_gantt(res, out_dir)
+    write_table_scenario(out_dir)
+    write_table_solution(res, out_dir)
+
+    print(f"Figures and tables saved to {out_dir}/")
+
+
+if __name__ == "__main__":
+    main()

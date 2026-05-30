@@ -111,3 +111,20 @@ def test_scenario_gantt_pdf(tmp_path, res):
     assert pdf.exists()
     assert pdf.stat().st_size > 1000
     assert pdf.read_bytes()[:4] == b"%PDF"
+
+
+def test_main_creates_all_outputs(tmp_path):
+    from evopt.experiments.tiny_case_figures import main
+    main(out_dir=tmp_path)
+    expected = [
+        "soc_trajectories.pdf",
+        "charging_schedule.pdf",
+        "tariff_overlay.pdf",
+        "scenario_gantt.pdf",
+        "table_scenario.csv",
+        "table_scenario.tex",
+        "table_solution.csv",
+        "table_solution.tex",
+    ]
+    for fname in expected:
+        assert (tmp_path / fname).exists(), f"Missing output: {fname}"
