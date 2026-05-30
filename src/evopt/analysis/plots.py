@@ -12,6 +12,24 @@ import seaborn as sns
 from evopt.analysis.utils import apply_pub_style, colorblind_palette, save_figure
 
 
+def _horizon_agg(df: pd.DataFrame, metric: str) -> pd.DataFrame:
+    """Aggregate *metric* by (horizon, ports) for MILP-only rows.
+
+    Returns an empty DataFrame when no MILP data exists or the metric
+    column is absent.
+    """
+    milp = df[df["horizon"].notna()].copy()
+    if milp.empty or metric not in milp.columns:
+        return pd.DataFrame()
+    agg = (
+        milp.groupby(["horizon", "ports"])[metric]
+        .agg(mean="mean", std="std", n="count")
+        .reset_index()
+    )
+    agg["ci"] = 1.96 * agg["std"] / np.sqrt(agg["n"])
+    return agg
+
+
 def plot_profit_by_controller(df: pd.DataFrame, output_dir: Path) -> None:
     """Grouped bar chart: mean net_profit by controller, grouped by ports.
 
@@ -116,6 +134,7 @@ def plot_compute_vs_horizon(df: pd.DataFrame, output_dir: Path) -> None:
             agg["horizon"], agg["mean"], yerr=agg["ci"],
             marker="s", capsize=4, label=f"{port} ports", color=color,
         )
+    ax.set_yscale("log")
     ax.set_xlabel("Horizon (steps)")
     ax.set_ylabel("Mean Step Time (ms)")
     ax.set_title("MILP Compute Time vs Horizon (95% CI)")
@@ -168,6 +187,7 @@ def plot_compute_boxplot(df: pd.DataFrame, output_dir: Path) -> None:
         color=colorblind_palette(1)[0],
         flierprops={"marker": "o", "markersize": 3},
     )
+    ax.set_yscale("log")
     ax.set_xlabel("Controller")
     ax.set_ylabel("Total Compute Time (s)")
     ax.set_title("Compute Time Distribution by Controller")
@@ -283,6 +303,7 @@ def plot_profit_heatmap(df: pd.DataFrame, output_dir: Path) -> None:
 def _plot_scaling(
     df: pd.DataFrame, output_dir: Path,
     metric: str, ylabel: str, filename: str, title: str,
+    yscale: str = "linear",
 ) -> None:
     apply_pub_style()
     controllers = sorted(df["controller"].unique())
@@ -292,6 +313,7 @@ def _plot_scaling(
     for ctrl, color in zip(controllers, palette):
         sub = agg[agg["controller"] == ctrl].sort_values("ports")
         ax.plot(sub["ports"], sub[metric], marker="o", label=ctrl, color=color)
+    ax.set_yscale(yscale)
     ax.set_xlabel("Number of Ports")
     ax.set_ylabel(ylabel)
     ax.set_title(title)
@@ -302,7 +324,8 @@ def _plot_scaling(
 def plot_scaling_compute(df: pd.DataFrame, output_dir: Path) -> None:
     """Total compute time (s) vs ports, one line per controller."""
     _plot_scaling(df, output_dir, "total_compute_s", "Total Compute Time (s)",
-                  "scaling_compute.png", "Compute Time Scaling with Port Count")
+                  "scaling_compute.png", "Compute Time Scaling with Port Count",
+                  yscale="log")
 
 
 def plot_scaling_profit(df: pd.DataFrame, output_dir: Path) -> None:

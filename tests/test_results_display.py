@@ -491,3 +491,60 @@ def test_explicit_output_dir(tmp_path):
     )
     assert result.returncode == 0, result.stderr
     assert (out_dir / "benchmark_report.md").exists()
+
+
+# ── _horizon_agg ────────────────────────────────────────────────────────────
+def _milp_df(n_seeds: int = 3) -> pd.DataFrame:
+    """DataFrame with MILP-only controllers (milp_h1, milp_h3, milp_h6, milp_h12)."""
+    rng = np.random.default_rng(42)
+    rows = []
+    for horizon in [1, 3, 6, 12]:
+        ctrl = f"milp_h{horizon}"
+        for ports in [3, 6]:
+            for seed in range(n_seeds):
+                rows.append({
+                    "controller":           ctrl,
+                    "horizon":              float(horizon),
+                    "ports":                ports,
+                    "seed":                 seed,
+                    "net_profit":           rng.normal(8.0 * horizon, 1.0),
+                    "mean_step_ms":         abs(rng.normal(20.0 * horizon, 3.0)),
+                    "served_customers":     float(rng.integers(3, 9)),
+                    "mean_soc_fulfillment": rng.uniform(0.7, 1.0),
+                    "total_compute_s":      abs(rng.normal(2.0 * horizon, 0.5)),
+                })
+    return pd.DataFrame(rows)
+
+
+from evopt.analysis.plots import _horizon_agg
+
+
+def test_horizon_agg_returns_expected_columns():
+    df = _milp_df()
+    agg = _horizon_agg(df, "net_profit")
+    assert {"horizon", "ports", "mean", "std", "n", "ci"}.issubset(agg.columns)
+
+
+def test_horizon_agg_excludes_non_milp_rows():
+    df = _milp_df()
+    # Add a baseline controller row (horizon = NaN)
+    baseline = df.iloc[0].copy()
+    baseline["controller"] = "equal_share"
+    baseline["horizon"] = float("nan")
+    df = pd.concat([df, baseline.to_frame().T], ignore_index=True)
+    agg = _horizon_agg(df, "net_profit")
+    assert agg["n"].min() >= 1
+    assert len(agg) == len([1, 3, 6, 12]) * len([3, 6])  # 4 horizons × 2 port vals
+
+
+def test_horizon_agg_returns_empty_when_no_milp():
+    df = _milp_df()
+    df["horizon"] = float("nan")   # make all rows non-MILP
+    agg = _horizon_agg(df, "net_profit")
+    assert agg.empty
+
+
+def test_horizon_agg_returns_empty_for_missing_metric():
+    df = _milp_df()
+    agg = _horizon_agg(df, "nonexistent_column")
+    assert agg.empty
