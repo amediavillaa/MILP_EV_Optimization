@@ -36,3 +36,23 @@ def test_car1_target_reached_by_departure(res):
 def test_car5_target_reached(res):
     # Car 5 (LP i=4) must hit s_target=15 kWh by t=8
     assert res.soc[4, 8] >= 15.0 - 1e-3
+
+
+def test_table_scenario_csv(tmp_path):
+    from evopt.experiments.tiny_case_figures import write_table_scenario
+    write_table_scenario(tmp_path)
+    text = (tmp_path / "table_scenario.csv").read_text()
+    assert "Car 4" in text
+    assert "Rejected" in text
+    assert "20" in text   # s_target for Car 1
+    assert "Port" in text
+
+
+def test_table_scenario_tex(tmp_path):
+    from evopt.experiments.tiny_case_figures import write_table_scenario
+    write_table_scenario(tmp_path)
+    tex = (tmp_path / "table_scenario.tex").read_text()
+    assert r"\toprule" in tex
+    assert r"\bottomrule" in tex
+    assert "Rejected" in tex
+    assert "Car 4" in tex

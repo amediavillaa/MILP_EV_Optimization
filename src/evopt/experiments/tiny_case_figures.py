@@ -46,6 +46,44 @@ _C = {
 }
 
 
+# Five real-world cars in display order (Car 4 is rejected)
+_SCENARIO_ROWS = [
+    # (car_id, port, arrival, departure, s_init, s_target, status)
+    ("Car 1", "1", "t1", "t4",  5,  20, "Served"),
+    ("Car 2", "2", "t1", "t8", 10,  25, "Served"),
+    ("Car 3", "3", "t1", "t8",  8,  22, "Served"),
+    ("Car 4", "—", "t1", "—",  "—", "—", "Rejected"),
+    ("Car 5", "1", "t5", "t8",  3,  15, "Served"),
+]
+
+_SCENARIO_COLS = ["Car", "Port", "Arrival", "Departure",
+                  r"$s_0$ (kWh)", r"$s^*$ (kWh)", "Status"]
+
+
+def _to_booktabs(df: pd.DataFrame) -> str:
+    """Return a booktabs LaTeX tabular string for *df*."""
+    col_fmt = "l" + "r" * (len(df.columns) - 1)
+    header = " & ".join(str(c) for c in df.columns) + r" \\"
+    lines = [
+        r"\begin{tabular}{" + col_fmt + "}",
+        r"\toprule",
+        header,
+        r"\midrule",
+    ]
+    for _, row in df.iterrows():
+        lines.append(" & ".join(str(v) for v in row) + r" \\")
+    lines += [r"\bottomrule", r"\end{tabular}"]
+    return "\n".join(lines)
+
+
+def write_table_scenario(out: Path) -> None:
+    """Save table_scenario.csv and table_scenario.tex to *out*."""
+    out = Path(out)
+    df = pd.DataFrame(_SCENARIO_ROWS, columns=_SCENARIO_COLS)
+    df.to_csv(out / "table_scenario.csv", index=False)
+    (out / "table_scenario.tex").write_text(_to_booktabs(df), encoding="utf-8")
+
+
 def extract_results(m, data: dict) -> TinyResults:
     T = data["T"]
     J = data["J"]
