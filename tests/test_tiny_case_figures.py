@@ -102,3 +102,12 @@ def test_tariff_overlay_pdf(tmp_path, res):
     assert pdf.exists()
     assert pdf.stat().st_size > 1000
     assert pdf.read_bytes()[:4] == b"%PDF"
+
+
+def test_scenario_gantt_pdf(tmp_path, res):
+    from evopt.experiments.tiny_case_figures import plot_scenario_gantt
+    plot_scenario_gantt(res, tmp_path)
+    pdf = tmp_path / "scenario_gantt.pdf"
+    assert pdf.exists()
+    assert pdf.stat().st_size > 1000
+    assert pdf.read_bytes()[:4] == b"%PDF"

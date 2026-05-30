@@ -303,3 +303,51 @@ def plot_tariff_overlay(res: TinyResults, out: Path) -> None:
 
     fig.tight_layout()
     save_figure(fig, Path(out) / "tariff_overlay.pdf")
+
+
+def plot_scenario_gantt(res: TinyResults, out: Path) -> None:
+    apply_pub_style()
+    fig, ax = plt.subplots(figsize=(6.5, 3))
+
+    bar_h = 0.45
+    # y positions for Port 1, Port 2, Port 3, Rejected row
+    y_port = {1: 3, 2: 2, 3: 1}
+    y_rej  = 0
+
+    # Car 1: port 1, t1-t4  (uses _C[1] = blue)
+    ax.barh(y_port[1], 4, left=0.5, height=bar_h, color=_C[1], label="Car 1")
+    ax.text(0.5 + 4 / 2, y_port[1], "Car 1", ha="center", va="center",
+            fontsize=8, color="white", fontweight="bold")
+
+    # Car 5: port 1, t5-t8  (uses _C[4] = pink/purple)
+    ax.barh(y_port[1], 4, left=4.5, height=bar_h, color=_C[4], label="Car 5")
+    ax.text(4.5 + 4 / 2, y_port[1], "Car 5", ha="center", va="center",
+            fontsize=8, color="white", fontweight="bold")
+
+    # Car 2: port 2, t1-t8  (uses _C[2] = green)
+    ax.barh(y_port[2], 8, left=0.5, height=bar_h, color=_C[2], label="Car 2")
+    ax.text(0.5 + 8 / 2, y_port[2], "Car 2", ha="center", va="center",
+            fontsize=8, color="white", fontweight="bold")
+
+    # Car 3: port 3, t1-t8  (uses _C[3] = orange-red)
+    ax.barh(y_port[3], 8, left=0.5, height=bar_h, color=_C[3], label="Car 3")
+    ax.text(0.5 + 8 / 2, y_port[3], "Car 3", ha="center", va="center",
+            fontsize=8, color="white", fontweight="bold")
+
+    # Car 4: rejected — hatched bar at t1 on the Rejected row
+    ax.barh(y_rej, 1, left=0.5, height=bar_h,
+            color="none", edgecolor="#888888", linewidth=1.2,
+            hatch="//", label="Car 4 (rejected)")
+    ax.text(2.0, y_rej, "Car 4 — rejected (no free port at t1)",
+            va="center", fontsize=8, color="#666666")
+
+    ax.set_yticks([y_rej, y_port[3], y_port[2], y_port[1]])
+    ax.set_yticklabels(["Rejected", "Port 3", "Port 2", "Port 1"])
+    ax.set_xticks([t + 0.5 for t in range(0, 9)])
+    ax.set_xticklabels([""] + [f"t{t}" for t in range(1, 9)])
+    ax.set_xlim(0.2, 9.0)
+    ax.set_xlabel("Timestep (h)")
+    ax.spines["left"].set_visible(False)
+    ax.tick_params(axis="y", length=0)
+    ax.legend(fontsize=8, loc="lower right")
+    save_figure(fig, Path(out) / "scenario_gantt.pdf")
