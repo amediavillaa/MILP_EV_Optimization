@@ -589,3 +589,32 @@ def test_plot_horizon_full_handles_missing_metric(tmp_path):
     plot_horizon_full(df, tmp_path)
     # Should still create the figure with the remaining 3 panels
     assert (tmp_path / "horizon_full.png").exists()
+
+
+# ── pipeline integration ────────────────────────────────────────────────────
+
+def test_pipeline_generates_horizon_figures(tmp_path):
+    """End-to-end: analysis CLI produces both horizon figure files."""
+    csv_path = tmp_path / "bench.csv"
+    df = _milp_df()
+    df["experiment_id"] = "test"
+    df["tariff"] = "fixed"
+    df["bess_enabled"] = False
+    df["v2g_enabled"] = False
+    df["solver"] = "highs"
+    df["total_revenue"] = df["net_profit"] + 5.0
+    df["total_cost"] = 5.0
+    df["rejected_customers"] = 0.0
+    df["gap_to_best"] = 0.0
+    df["total_compute_s"] = df["mean_step_ms"] / 1000.0
+    df.to_csv(csv_path, index=False)
+
+    out_dir = tmp_path / "out"
+    result = subprocess.run(
+        [sys.executable, "-m", "evopt.analysis",
+         "--input", str(csv_path), "--output", str(out_dir), "--no-radar"],
+        capture_output=True, text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert (out_dir / "horizon_comparison.png").exists()
+    assert (out_dir / "horizon_full.png").exists()

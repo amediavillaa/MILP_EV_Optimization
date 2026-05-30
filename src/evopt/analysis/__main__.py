@@ -54,6 +54,8 @@ def main() -> None:
     plots.plot_profit_by_controller(df, output_dir)
     plots.plot_profit_vs_horizon(df, output_dir)
     plots.plot_compute_vs_horizon(df, output_dir)
+    plots.plot_horizon_comparison(df, output_dir)
+    plots.plot_horizon_full(df, output_dir)
     plots.plot_profit_boxplot(df, output_dir)
     plots.plot_profit_violin(df, output_dir)
     plots.plot_compute_boxplot(df, output_dir)
