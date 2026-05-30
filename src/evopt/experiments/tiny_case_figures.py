@@ -84,6 +84,55 @@ def write_table_scenario(out: Path) -> None:
     (out / "table_scenario.tex").write_text(_to_booktabs(df), encoding="utf-8")
 
 
+def write_table_solution(res: TinyResults, out: Path) -> None:
+    """Save table_solution.csv and table_solution.tex to *out*.
+
+    Writes two sections:
+      1. Summary metrics (Revenue, Grid cost, Net profit).
+      2. Charging schedule (kW per port-car pair per timestep).
+    """
+    out = Path(out)
+    T = res.T
+
+    # --- section 1: summary ---
+    summary = pd.DataFrame([
+        {"Metric": "Revenue (€)",     "Value": f"{res.revenue:.2f}"},
+        {"Metric": "Grid cost (€)",   "Value": f"{res.cost:.2f}"},
+        {"Metric": "Net profit (€)",  "Value": f"{res.profit:.2f}"},
+    ])
+
+    # --- section 2: charging schedule ---
+    port_labels = {
+        1: "Port 1 / Car 1 (t1–t4)",
+        2: "Port 2 / Car 2",
+        3: "Port 3 / Car 3",
+    }
+
+    rows = []
+    for j in [1, 2, 3]:
+        row = {"Port / Car": port_labels[j]}
+        for t in range(1, T + 1):
+            row[f"t{t}"] = f"{res.power[j, t]:.2f}"
+        rows.append(row)
+    total_row = {"Port / Car": "Total (kW)"}
+    for t in range(1, T + 1):
+        total_row[f"t{t}"] = f"{sum(res.power[j, t] for j in [1, 2, 3]):.2f}"
+    rows.append(total_row)
+    schedule = pd.DataFrame(rows)
+
+    # CSV: two sections separated by blank line
+    csv_lines = []
+    csv_lines.append("# Summary metrics")
+    csv_lines.append(summary.to_csv(index=False).strip())
+    csv_lines.append("")
+    csv_lines.append("# Charging schedule (kW)")
+    csv_lines.append(schedule.to_csv(index=False).strip())
+    (out / "table_solution.csv").write_text("\n".join(csv_lines), encoding="utf-8")
+
+    # LaTeX: summary table only (schedule is too wide for single-column paper)
+    (out / "table_solution.tex").write_text(_to_booktabs(summary), encoding="utf-8")
+
+
 def extract_results(m, data: dict) -> TinyResults:
     T = data["T"]
     J = data["J"]

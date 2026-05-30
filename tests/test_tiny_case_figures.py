@@ -56,3 +56,22 @@ def test_table_scenario_tex(tmp_path):
     assert r"\bottomrule" in tex
     assert "Rejected" in tex
     assert "Car 4" in tex
+
+
+def test_table_solution_csv_metrics(tmp_path, res):
+    from evopt.experiments.tiny_case_figures import write_table_solution
+    write_table_solution(res, tmp_path)
+    text = (tmp_path / "table_solution.csv").read_text()
+    assert "Revenue" in text
+    assert "54" in text
+    assert "26" in text
+    assert "28" in text
+
+
+def test_table_solution_tex(tmp_path, res):
+    from evopt.experiments.tiny_case_figures import write_table_solution
+    write_table_solution(res, tmp_path)
+    tex = (tmp_path / "table_solution.tex").read_text()
+    assert r"\toprule" in tex
+    assert r"\bottomrule" in tex
+    assert "Revenue" in tex
