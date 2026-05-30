@@ -254,3 +254,52 @@ def plot_charging_schedule(res: TinyResults, out: Path) -> None:
     ax.set_xticklabels([f"t{t}" for t in range(1, T + 1)])
     ax.legend(fontsize=8, loc="upper right")
     save_figure(fig, Path(out) / "charging_schedule.pdf")
+
+
+def plot_tariff_overlay(res: TinyResults, out: Path) -> None:
+    apply_pub_style()
+    T = res.T
+    ts = np.arange(1, T + 1)
+    data = res.data
+
+    fig, (ax_top, ax_bot) = plt.subplots(
+        2, 1, figsize=(6.5, 5),
+        gridspec_kw={"height_ratios": [1, 2]},
+        sharex=True,
+    )
+
+    # --- top panel: buy price step function ---
+    prices = [data["p_buy"][t] for t in range(1, T + 1)]
+    ax_top.step(ts, prices, where="mid", color="#e08a00", linewidth=2)
+    ax_top.set_ylabel("Buy Price (€/kWh)")
+    ax_top.set_ylim(0, max(prices) * 1.3)
+
+    # --- bottom panel: same stacked bars as plot_charging_schedule, using _C ---
+    p1_car1 = np.array([res.power[1, t] if t <= 4 else 0.0 for t in range(1, T + 1)])
+    p1_car5 = np.array([res.power[1, t] if t >= 5 else 0.0 for t in range(1, T + 1)])
+    p2      = np.array([res.power[2, t] for t in range(1, T + 1)])
+    p3      = np.array([res.power[3, t] for t in range(1, T + 1)])
+
+    bar_kw = dict(width=0.6, align="center")
+    ax_bot.bar(ts, p1_car1, label="Port 1 / Car 1 (t1–t4)", color=_C[1], **bar_kw)
+    ax_bot.bar(ts, p1_car5, bottom=p1_car1,
+               label="Port 1 / Car 5 (t5–t8)", color=_C[4], **bar_kw)
+    ax_bot.bar(ts, p2, bottom=p1_car1 + p1_car5,
+               label="Port 2 / Car 2", color=_C[2], **bar_kw)
+    ax_bot.bar(ts, p3, bottom=p1_car1 + p1_car5 + p2,
+               label="Port 3 / Car 3", color=_C[3], **bar_kw)
+    ax_bot.axhline(20.0, color="#d62728", linestyle="--", linewidth=1.5,
+                   label="Grid cap (20 kW)")
+    ax_bot.axvline(4.5, color="#888888", linestyle="--", linewidth=1)
+    ax_bot.set_ylim(0, 25)
+    ax_bot.set_ylabel("Charging Power (kW)")
+    ax_bot.set_xlabel("Timestep (h)")
+    ax_bot.set_xticks(range(1, T + 1))
+    ax_bot.set_xticklabels([f"t{t}" for t in range(1, T + 1)])
+    ax_bot.legend(fontsize=8, loc="upper right")
+
+    # shared boundary annotation on top panel
+    ax_top.axvline(4.5, color="#888888", linestyle="--", linewidth=1)
+
+    fig.tight_layout()
+    save_figure(fig, Path(out) / "tariff_overlay.pdf")

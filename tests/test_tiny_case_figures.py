@@ -93,3 +93,12 @@ def test_charging_schedule_pdf(tmp_path, res):
     assert pdf.exists()
     assert pdf.stat().st_size > 1000
     assert pdf.read_bytes()[:4] == b"%PDF"
+
+
+def test_tariff_overlay_pdf(tmp_path, res):
+    from evopt.experiments.tiny_case_figures import plot_tariff_overlay
+    plot_tariff_overlay(res, tmp_path)
+    pdf = tmp_path / "tariff_overlay.pdf"
+    assert pdf.exists()
+    assert pdf.stat().st_size > 1000
+    assert pdf.read_bytes()[:4] == b"%PDF"
