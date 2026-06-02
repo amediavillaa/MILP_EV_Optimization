@@ -76,14 +76,14 @@ class ScenarioCollector:
         # Re-map car IDs to 1-indexed integers for build_ev_lp_model
         id_map = {old: new for new, old in enumerate(cars, start=1)}
 
-        p_buy_1  = dict(self._p_buy)
-        p_sell_1 = dict(self._p_sell)
+        p_buy_1  = {k + 1: v for k, v in self._p_buy.items()}
+        p_sell_1 = {k + 1: v for k, v in self._p_sell.items()}
 
-        T_max = max(p_buy_1.keys()) if p_buy_1 else 288
+        T_max = max(self._p_buy.keys()) + 1 if self._p_buy else 288
         I = len(cars)
 
-        arr         = {id_map[c]: self._first_seen[c]["arr"]            for c in cars}
-        dep         = {id_map[c]: self._last_t_max[c]                  for c in cars}
+        arr         = {id_map[c]: self._first_seen[c]["arr"] + 1       for c in cars}
+        dep         = {id_map[c]: self._last_t_max[c] + 1              for c in cars}
         # Clamp dep to T_max so constraints remain feasible
         dep         = {i: min(d, T_max) for i, d in dep.items()}
         s_init      = {id_map[c]: self._first_seen[c]["s_init"]        for c in cars}
@@ -154,7 +154,7 @@ class OfflineLPController(BaseController):
         pass
 
     def compute_action(self, state: dict) -> dict[int, float]:
-        return dict(self._schedule.get(state["t"], {}))
+        return dict(self._schedule.get(state["t"] + 1, {}))
 
 
 def build_offline_schedule(

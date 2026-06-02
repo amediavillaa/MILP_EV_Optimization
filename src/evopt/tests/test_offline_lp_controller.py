@@ -28,7 +28,7 @@ def test_collector_records_arrival():
     collector = ScenarioCollector()
     collector.record(_make_state(t=5, cars={1: {"soc_now": 3.0, "s_target": 10.0, "s_cap": 20.0, "t_max": 15}}))
     scenario = collector.build_scenario()
-    assert scenario["arr"][1] == 5
+    assert scenario["arr"][1] == 6   # 5 + 1
     assert scenario["s_init"][1] == pytest.approx(3.0)
 
 
@@ -39,24 +39,25 @@ def test_collector_records_departure():
     collector.record(state5)
     collector.record(state6)
     scenario = collector.build_scenario()
-    # dep should be t_max from last seen step
-    assert scenario["dep"][1] == 15
+    # dep should be t_max from last seen step, shifted to LP 1-indexed
+    assert scenario["dep"][1] == 16   # 15 + 1
 
 
 def test_collector_prices_captured_from_first_step():
     collector = ScenarioCollector()
     collector.record(_make_state(t=0))
     scenario = collector.build_scenario()
-    assert 0 in scenario["p_buy"]
-    assert scenario["p_buy"][0] == pytest.approx(0.20)
+    assert 1 in scenario["p_buy"]       # key 0 shifted to 1
+    assert scenario["p_buy"][1] == pytest.approx(0.20)
 
 
 def test_offline_controller_replays_schedule():
-    schedule = {5: {1: 10.0}, 6: {1: 8.0}, 7: {}}
+    # Schedule keys are 1-indexed LP steps
+    schedule = {6: {1: 10.0}, 7: {1: 8.0}, 8: {}}
     ctrl = OfflineLPController(schedule)
-    assert ctrl.compute_action(_make_state(t=5)) == {1: 10.0}
-    assert ctrl.compute_action(_make_state(t=6)) == {1: 8.0}
-    assert ctrl.compute_action(_make_state(t=7)) == {}
+    assert ctrl.compute_action(_make_state(t=5)) == {1: 10.0}   # 5+1=6
+    assert ctrl.compute_action(_make_state(t=6)) == {1: 8.0}    # 6+1=7
+    assert ctrl.compute_action(_make_state(t=7)) == {}           # 7+1=8 → empty
 
 
 def test_offline_controller_missing_step_returns_empty():
