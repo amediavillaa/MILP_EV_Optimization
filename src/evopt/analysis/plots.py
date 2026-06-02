@@ -99,11 +99,8 @@ def plot_profit_vs_horizon(df: pd.DataFrame, output_dir: Path) -> None:
             mean="mean", std="std", n="count"
         ).reset_index()
         agg["ci"] = 1.96 * agg["std"] / np.sqrt(agg["n"])
-        ax.plot(agg["horizon"], agg["mean"], marker="o", label=f"{port} ports", color=color)
-        ax.fill_between(
-            agg["horizon"], agg["mean"] - agg["ci"], agg["mean"] + agg["ci"],
-            alpha=0.2, color=color,
-        )
+        ax.errorbar(agg["horizon"], agg["mean"], yerr=agg["ci"],
+                    marker="o", capsize=4, color=color, label=f"{port} ports")
     ax.set_xlabel("Horizon (steps)")
     ax.set_ylabel("Net Profit (€)")
     ax.set_title("MILP Net Profit vs Horizon (95% CI)")
@@ -163,17 +160,11 @@ def plot_horizon_comparison(df: pd.DataFrame, output_dir: Path) -> None:
 
     fig, (ax_l, ax_r) = plt.subplots(1, 2, figsize=(10, 4))
 
-    # Left panel: net profit with 95% CI fill bands
+    # Left panel: net profit with 95% CI error bars
     for port, color in zip(ports_vals, palette):
         sub = agg_profit[agg_profit["ports"] == port].sort_values("horizon")
-        ax_l.plot(sub["horizon"], sub["mean"], marker="o", color=color,
-                  label=f"{port} ports")
-        ax_l.fill_between(
-            sub["horizon"],
-            sub["mean"] - sub["ci"],
-            sub["mean"] + sub["ci"],
-            alpha=0.2, color=color,
-        )
+        ax_l.errorbar(sub["horizon"], sub["mean"], yerr=sub["ci"],
+                      marker="o", capsize=4, color=color, label=f"{port} ports")
     ax_l.set_xlabel("Horizon (steps)")
     ax_l.set_ylabel("Net Profit (€)")
     ax_l.set_title("Net Profit (95% CI)")
@@ -237,14 +228,8 @@ def plot_horizon_full(df: pd.DataFrame, output_dir: Path) -> None:
                     marker="s", capsize=4, color=color, label=f"{port} ports",
                 )
             else:
-                ax.plot(sub["horizon"], sub["mean"], marker="o",
-                        color=color, label=f"{port} ports")
-                ax.fill_between(
-                    sub["horizon"],
-                    sub["mean"] - sub["ci"],
-                    sub["mean"] + sub["ci"],
-                    alpha=0.2, color=color,
-                )
+                ax.errorbar(sub["horizon"], sub["mean"], yerr=sub["ci"],
+                            marker="o", capsize=4, color=color, label=f"{port} ports")
         ax.set_yscale(scale)
         ax.set_xlabel("Horizon (steps)")
         ax.set_ylabel(ylabel)
