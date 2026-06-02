@@ -100,9 +100,9 @@ class ScenarioCollector:
             for t in range(arr[id_map[c]], dep[id_map[c]] + 1)
         }
 
-        # Use s_target as s_cap in offline LP so it does not over-serve customers
-        # (ensures fair comparison with rolling MPC, which stops at s_target)
-        s_cap_offline = {id_map[c]: self._first_seen[c]["s_target"] for c in cars}
+        # Use actual battery capacity so the offline LP can charge up to the same
+        # physical limit as the rolling MPC controller.
+        s_cap_offline = {id_map[c]: self._first_seen[c]["s_cap"] for c in cars}
 
         P_car_max = {
             id_map[c]: meta["I_max"].get(self._first_seen[c]["port_j"], 32.0)
