@@ -38,22 +38,28 @@ EV_TARIFF     = 0.75
 
 
 def _collect_scenario(env, wrapper: ChargaxWrapper, seed: int) -> dict:
-    """Pass 1: run null controller to collect full episode scenario."""
-    key      = jax.random.PRNGKey(seed)
+    """Pass 1: run MaxCharge controller to collect full episode scenario.
+
+    Uses MaxCharge (not null) so cars depart on schedule and new customers
+    can arrive, matching the episode structure of the MPC replay pass.
+    """
+    key = jax.random.PRNGKey(seed)
     obs, state = env.reset_env(key)
     wrapper.reset()
     collector = ScenarioCollector()
+    charge_ctrl = MaxChargeController()
+    charge_ctrl.reset()
 
     done = False
     while not done:
         clean_state = wrapper.extract_state(obs, state)
         collector.record(clean_state)
 
-        # Null action: no current to any port
-        null_actions = wrapper.to_chargax_actions({})
+        actions = charge_ctrl.compute_action(clean_state)
+        chargax_actions = wrapper.to_chargax_actions(actions)
         key, subkey = jax.random.split(key)
-        timestep, state = env.step_env(subkey, state, null_actions)
-        obs  = timestep.observation
+        timestep, state = env.step_env(subkey, state, chargax_actions)
+        obs = timestep.observation
         done = bool(timestep.terminated) or bool(timestep.truncated)
 
     return collector.build_scenario()
