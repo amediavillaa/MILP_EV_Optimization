@@ -67,14 +67,7 @@ class ScenarioCollector:
             self._last_t_max[car_id] = car["t_max"]
 
     def build_scenario(self) -> dict:
-        """Return data dict compatible with build_ev_lp_model.
-
-        ChargaxWrapper uses 0-based timestep indices (t=0 at episode start),
-        but build_ev_lp_model expects 1-based indices via RangeSet(1, T).
-        All time indices are therefore shifted by +1 here so that the offline
-        LP model sees t ∈ {1, 2, …, T}.  OfflineLPController.compute_action
-        applies the same +1 shift when looking up the schedule.
-        """
+        """Return data dict compatible with build_ev_lp_model."""
         if not self._first_seen:
             return {}
 
@@ -83,16 +76,14 @@ class ScenarioCollector:
         # Re-map car IDs to 1-indexed integers for build_ev_lp_model
         id_map = {old: new for new, old in enumerate(cars, start=1)}
 
-        # Shift 0-based time keys to 1-based (build_ev_lp_model uses RangeSet(1, T))
-        p_buy_1  = {k + 1: v for k, v in self._p_buy.items()}
-        p_sell_1 = {k + 1: v for k, v in self._p_sell.items()}
+        p_buy_1  = dict(self._p_buy)
+        p_sell_1 = dict(self._p_sell)
 
         T_max = max(p_buy_1.keys()) if p_buy_1 else 288
         I = len(cars)
 
-        # arr / dep are also 0-based raw timesteps; shift to 1-based
-        arr         = {id_map[c]: self._first_seen[c]["arr"] + 1      for c in cars}
-        dep         = {id_map[c]: self._last_t_max[c] + 1             for c in cars}
+        arr         = {id_map[c]: self._first_seen[c]["arr"]            for c in cars}
+        dep         = {id_map[c]: self._last_t_max[c]                  for c in cars}
         # Clamp dep to T_max so constraints remain feasible
         dep         = {i: min(d, T_max) for i, d in dep.items()}
         s_init      = {id_map[c]: self._first_seen[c]["s_init"]        for c in cars}
@@ -163,8 +154,7 @@ class OfflineLPController(BaseController):
         pass
 
     def compute_action(self, state: dict) -> dict[int, float]:
-        # state["t"] is 0-based (Chargax convention); schedule keys are 1-based
-        return dict(self._schedule.get(state["t"] + 1, {}))
+        return dict(self._schedule.get(state["t"], {}))
 
 
 def build_offline_schedule(
