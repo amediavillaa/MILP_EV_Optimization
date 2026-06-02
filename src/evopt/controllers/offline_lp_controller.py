@@ -11,12 +11,23 @@ class ScenarioCollector:
     the full-episode data dict required by build_ev_lp_model.
     """
 
-    def __init__(self) -> None:
-        self._first_seen:  dict[int, dict] = {}   # car_id -> {arr, s_init, port_j, s_cap, s_target}
-        self._last_t_max:  dict[int, int]  = {}   # car_id -> most recent t_max estimate
-        self._p_buy:       dict[int, float] = {}
-        self._p_sell:      dict[int, float] = {}
-        self._scenario_meta: dict = {}             # J, P_max, V, I_max, delta_t
+    def __init__(
+        self,
+        i_high:   float = 25.0,
+        i_low:    float = 25.0,
+        socb_min: float = 3.0,
+        socb_max: float = 30.0,
+    ) -> None:
+        self._i_high   = i_high
+        self._i_low    = i_low
+        self._socb_min = socb_min
+        self._socb_max = socb_max
+        self._first_seen:    dict[int, dict]  = {}   # car_id -> {arr, s_init, port_j, s_cap, s_target}
+        self._last_t_max:    dict[int, int]   = {}   # car_id -> most recent t_max estimate
+        self._p_buy:         dict[int, float] = {}
+        self._p_sell:        dict[int, float] = {}
+        self._scenario_meta: dict             = {}   # J, P_max, V, I_max, delta_t
+        self._socb_init:     float | None     = None
 
     def record(self, state: dict) -> None:
         t = state["t"]
@@ -30,6 +41,9 @@ class ScenarioCollector:
                 "I_max":   dict(state["I_max"]),
                 "delta_t": state["delta_t"],
             }
+
+        if self._socb_init is None:
+            self._socb_init = state.get("socb_now", 0.0)
 
         # Accumulate prices (later steps overwrite earlier for the same key,
         # but since future_buy_prices extends forward, union covers all steps)
@@ -59,13 +73,12 @@ class ScenarioCollector:
         # Re-map car IDs to 1-indexed integers for build_ev_lp_model
         id_map = {old: new for new, old in enumerate(cars, start=1)}
 
-        T_max = max(self._p_buy.keys()) if self._p_buy else 288
+        T_max = max(self._p_buy.keys()) + 1 if self._p_buy else 288
         I = len(cars)
 
         arr         = {id_map[c]: self._first_seen[c]["arr"]     for c in cars}
         dep         = {id_map[c]: self._last_t_max[c]            for c in cars}
         s_init      = {id_map[c]: self._first_seen[c]["s_init"]  for c in cars}
-        s_cap       = {id_map[c]: self._first_seen[c]["s_cap"]   for c in cars}
         s_target    = {id_map[c]: self._first_seen[c]["s_target"] for c in cars}
         assignments = {id_map[c]: self._first_seen[c]["port_j"]  for c in cars}
 
@@ -97,8 +110,8 @@ class ScenarioCollector:
             "P_max":      meta["P_max"],
             "V":          {**meta["V"], j_bess: meta["V"].get(j_bess, 400.0)},
             "I_max":      meta["I_max"],
-            "I_high":     25.0,
-            "I_low":      25.0,
+            "I_high":     self._i_high,
+            "I_low":      self._i_low,
             "p_buy":      self._p_buy,
             "p_sell":     self._p_sell,
             "L":          {t: 0.0 for t in range(1, T_max + 1)},
@@ -111,9 +124,9 @@ class ScenarioCollector:
             "s_target":   s_target,
             "P_car_max":  P_car_max,
             "r_car":      r_car,
-            "SoCB_init":  0.0,
-            "SoCB_min":   3.0,
-            "SoCB_max":   30.0,
+            "SoCB_init":  self._socb_init if self._socb_init is not None else 0.0,
+            "SoCB_min":   self._socb_min,
+            "SoCB_max":   self._socb_max,
             "r_bess_ch":  {t: 1.0 for t in range(1, T_max + 1)},
             "r_bess_dis": {t: 1.0 for t in range(1, T_max + 1)},
         }
