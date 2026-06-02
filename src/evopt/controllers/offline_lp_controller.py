@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from evopt.controllers.base_controller import BaseController
+from evopt.optimization.model import build_ev_lp_model
+from evopt.optimization.solver import solve
+from pyomo.environ import value
 
 
 class ScenarioCollector:
@@ -147,3 +150,40 @@ class OfflineLPController(BaseController):
 
     def compute_action(self, state: dict) -> dict[int, float]:
         return dict(self._schedule.get(state["t"], {}))
+
+
+def build_offline_schedule(
+    scenario:  dict,
+    solver:    str   = "highs",
+    eta_bess:  float = 0.95,
+) -> dict[int, dict[int, float]]:
+    """Solve the full-horizon offline LP and return a schedule dict.
+
+    Returns {t: {port_j: amps}} for t = 1 … T.
+    Returns {} if the scenario has no cars or the LP is infeasible.
+    """
+    if not scenario or scenario.get("I", 0) == 0:
+        return {}
+
+    m = build_ev_lp_model(scenario, eta_bess=eta_bess)
+
+    try:
+        solve(m, solver=solver)
+    except Exception:
+        return {}
+
+    J     = scenario["J"]
+    T     = scenario["T"]
+    j_bess = J + 1
+
+    schedule: dict[int, dict[int, float]] = {}
+    for t in range(1, T + 1):
+        actions: dict[int, float] = {}
+        for j in range(1, J + 1):
+            actions[j] = max(0.0, float(value(m.I_ev[j, t])))
+        # BESS: positive = discharging (LP convention matches OfflineLPController)
+        bess_net = float(value(m.I_bess_dis[t])) - float(value(m.I_bess_ch[t]))
+        actions[j_bess] = bess_net
+        schedule[t] = actions
+
+    return schedule

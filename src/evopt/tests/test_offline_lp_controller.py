@@ -1,5 +1,5 @@
 import pytest
-from evopt.controllers.offline_lp_controller import OfflineLPController, ScenarioCollector
+from evopt.controllers.offline_lp_controller import OfflineLPController, ScenarioCollector, build_offline_schedule
 
 
 def _make_state(t: int, cars: dict | None = None) -> dict:
@@ -62,3 +62,35 @@ def test_offline_controller_replays_schedule():
 def test_offline_controller_missing_step_returns_empty():
     ctrl = OfflineLPController({})
     assert ctrl.compute_action(_make_state(t=99)) == {}
+
+
+def test_build_offline_schedule_returns_schedule():
+    """Offline schedule must cover the car's dwell window and be non-negative."""
+    scenario = {
+        "J": 1, "T": 10, "I": 1,
+        "delta_t": 5 / 60,
+        "P_max": 10_000.0,
+        "V": {1: 400.0, 2: 400.0},
+        "I_max": {1: 32.0},
+        "I_high": 25.0, "I_low": 25.0,
+        "p_buy":  {t: 0.20 for t in range(1, 11)},
+        "p_sell": {t: 0.40 for t in range(1, 11)},
+        "L":      {t: 0.0  for t in range(1, 11)},
+        "assignments": {1: 1},
+        "arr": {1: 1}, "dep": {1: 8},
+        "s_init": {1: 2.0}, "s_cap": {1: 10.0},
+        "s_min": {1: 0.0}, "s_target": {1: 10.0},
+        "P_car_max": {1: 32.0 * 400.0},
+        "r_car": {(1, t): 1.0 for t in range(1, 9)},
+        "SoCB_init": 0.0, "SoCB_min": 0.0, "SoCB_max": 0.0,
+        "r_bess_ch": {t: 0.0 for t in range(1, 11)},
+        "r_bess_dis": {t: 0.0 for t in range(1, 11)},
+    }
+    schedule = build_offline_schedule(scenario, solver="highs")
+    # Schedule must exist for every step in planning horizon
+    assert isinstance(schedule, dict)
+    assert len(schedule) > 0
+    # All current values must be non-negative
+    for t, actions in schedule.items():
+        for port, amps in actions.items():
+            assert amps >= -1e-6, f"Negative current at t={t} port={port}: {amps}"
