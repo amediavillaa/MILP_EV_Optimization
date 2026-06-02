@@ -91,7 +91,7 @@ class ScenarioCollector:
         # deadline). The rolling t_max grows when a car overstays (deadline passed but
         # not yet evicted), which would give the LP a falsely long window and cause it
         # to defer charging past the real departure.
-        dep         = {id_map[c]: self._first_seen[c]["t_max_initial"]  for c in cars}
+        dep         = {id_map[c]: self._first_seen[c]["t_max_initial"] + 1  for c in cars}
         # Clamp dep to T_max so constraints remain feasible
         dep         = {i: min(d, T_max) for i, d in dep.items()}
         s_init      = {id_map[c]: self._first_seen[c]["s_init"]        for c in cars}
