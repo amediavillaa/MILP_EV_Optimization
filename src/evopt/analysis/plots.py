@@ -488,3 +488,45 @@ def plot_radar(df: pd.DataFrame, output_dir: Path) -> None:
     ax.set_title("Controller Comparison (Normalised Metrics)", pad=20)
     ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1.1), fontsize=9)
     save_figure(fig, Path(output_dir) / "radar.png")
+
+
+def plot_optimality_gap(df: pd.DataFrame, output_dir: Path) -> None:
+    """Line chart: mean optimality gap (%) by MPC horizon, one line per port size.
+
+    optimality_gap = (offline_profit - mpc_profit) / |offline_profit|
+    Only rows with a numeric horizon (MPC rows) are included.
+    """
+    apply_pub_style()
+    mpc = df[df["horizon"].notna()].copy()
+    if mpc.empty:
+        return
+
+    ports_vals = sorted(mpc["ports"].unique())
+    palette    = colorblind_palette(len(ports_vals))
+
+    agg = (
+        mpc.groupby(["horizon", "ports"])["optimality_gap"]
+        .agg(mean="mean", std="std", n="count")
+        .reset_index()
+    )
+    agg["ci"]      = 1.96 * agg["std"] / np.sqrt(agg["n"])
+    agg["gap_pct"] = agg["mean"] * 100
+
+    fig, ax = plt.subplots(figsize=(6, 4))
+    for port, color in zip(ports_vals, palette):
+        sub = agg[agg["ports"] == port].sort_values("horizon")
+        ax.errorbar(
+            sub["horizon"], sub["gap_pct"],
+            yerr=sub["ci"] * 100,
+            marker="o", label=f"{port} ports", color=color, capsize=3,
+        )
+
+    ax.axhline(0, color="black", linewidth=0.8, linestyle="--")
+    ax.set_xlabel("MPC Horizon (steps)")
+    ax.set_ylabel("Optimality Gap (%)")
+    ax.set_title("MPC vs Clairvoyant Offline LP")
+    ax.legend(title="Ports")
+    fig.tight_layout()
+
+    save_figure(fig, output_dir / "optimality_gap.png")
+    plt.close(fig)

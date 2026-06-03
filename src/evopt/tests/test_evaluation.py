@@ -1,4 +1,10 @@
+import tempfile
+from pathlib import Path
+
+import pandas as pd
 import pytest
+
+from evopt.analysis.plots import plot_optimality_gap
 from evopt.benchmarking.results import ChargaxSimResults, StepRecord
 from evopt.metrics.evaluation import compute_summary_metrics
 
@@ -39,3 +45,16 @@ def test_computes_served_rate():
     results = [_r("milp", 10.0, 8, 2)]   # 8 served, 2 rejected → rate = 0.8
     summary = compute_summary_metrics(results)
     assert summary["milp"]["served_rate_mean"] == pytest.approx(0.8)
+
+
+def test_plot_optimality_gap_creates_file():
+    df = pd.DataFrame({
+        "ports":          [3, 3, 6, 6],
+        "horizon":        [1, 12, 1, 12],
+        "optimality_gap": [0.05, 0.02, 0.04, 0.01],
+        "seed":           [0, 0, 0, 0],
+    })
+    with tempfile.TemporaryDirectory() as tmp:
+        plot_optimality_gap(df, Path(tmp))
+        files = list(Path(tmp).glob("*.png")) + list(Path(tmp).glob("*.pdf"))
+        assert len(files) >= 1
