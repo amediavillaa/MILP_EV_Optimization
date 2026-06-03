@@ -75,6 +75,7 @@ def _run_one_config(
     allow_discharging:      bool = False,
     allow_bess_discharging: bool = False,
     must_serve:             bool = True,
+    bess_derating:          float = 1.0,
 ) -> pd.DataFrame:
     """Run all controllers for one (n_ports, horizons) config. Returns per-seed DataFrame."""
     if use_bess:
@@ -119,6 +120,7 @@ def _run_one_config(
             f"milp_h{h}": LPController(
                 horizon_steps=h, solver="highs", **lp_bess_kwargs,
                 must_serve=must_serve,
+                bess_derating=bess_derating,
             )
             for h in horizons
         },
@@ -157,6 +159,7 @@ def main(
     allow_discharging:      bool             = False,
     allow_bess_discharging: bool             = False,
     must_serve:             bool             = True,
+    bess_derating:          float            = 1.0,
     save_path:              str | None       = None,
     cli_command:            str              = "",
 ) -> None:
@@ -215,6 +218,7 @@ def main(
             allow_discharging=allow_discharging,
             allow_bess_discharging=allow_bess_discharging,
             must_serve=must_serve,
+            bess_derating=bess_derating,
         )
         raw = df.copy()
         raw["ports"]         = n_ports
@@ -292,6 +296,10 @@ if __name__ == "__main__":
     parser.add_argument("--no-must-serve", action="store_true", default=False,
                         help="Disable must-serve constraints in the LP (default: enabled)")
     parser.add_argument(
+        "--bess-derating", type=float, default=1.0,
+        help="BESS charge/discharge capacity derating factor in [0,1] (default: 1.0 = no derating)",
+    )
+    parser.add_argument(
         "--save", type=str, default=None, metavar="PATH",
         help="Save raw per-seed results as CSV to PATH (e.g. results/benchmark.csv). "
              "A metadata.json sidecar is written to the same directory.",
@@ -308,6 +316,7 @@ if __name__ == "__main__":
         allow_bess_discharging=args.allow_bess_discharging,
         ports=args.ports,
         must_serve=not args.no_must_serve,
+        bess_derating=args.bess_derating,
         save_path=args.save,
         cli_command=" ".join(sys.argv),
     )

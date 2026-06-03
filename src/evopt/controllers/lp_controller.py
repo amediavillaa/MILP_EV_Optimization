@@ -25,6 +25,7 @@ class LPController(BaseController):
         socb_max: float = 30.0,
         minutes_per_step: int = 5,
         must_serve: bool = True,
+        bess_derating: float = 1.0,
     ) -> None:
         self.horizon_steps    = horizon_steps
         self.solver           = solver
@@ -35,6 +36,7 @@ class LPController(BaseController):
         self.socb_max         = socb_max
         self.minutes_per_step = minutes_per_step
         self.must_serve       = must_serve
+        self.bess_derating    = bess_derating
 
     def reset(self) -> None:
         pass
@@ -90,8 +92,8 @@ class LPController(BaseController):
             "r_car":     {(cid, step): 1.0 for cid in cars for step in window},
             "SoCB_min":  self.socb_min,
             "SoCB_max":  self.socb_max,
-            "r_bess_ch": {step: 1.0 for step in window},
-            "r_bess_dis":{step: 1.0 for step in window},
+            "r_bess_ch": {step: self.bess_derating for step in window},
+            "r_bess_dis":{step: self.bess_derating for step in window},
         }
 
     def _solve(self, state: dict) -> dict[int, dict[int, float]]:
