@@ -54,13 +54,18 @@ def format_experiment_id(
     ports: list[int],
     horizons: list[int],
     tariff: str,
+    grid_cap_strain: float = 1.0,
     **_kwargs,
 ) -> str:
     """Build a human-readable experiment ID, e.g. 'dynamic_1_3_p3_6_h1_6'."""
     safe_tariff = re.sub(r"[^a-zA-Z0-9]", "_", tariff)
     p_str = "_".join(str(p) for p in sorted(ports))
     h_str = "_".join(str(h) for h in sorted(horizons))
-    return f"{safe_tariff}_p{p_str}_h{h_str}"
+    base = f"{safe_tariff}_p{p_str}_h{h_str}"
+    if grid_cap_strain == 1.0:
+        return base
+    safe_strain = f"{grid_cap_strain:.2f}".replace(".", "_")
+    return f"{base}_s{safe_strain}"
 
 
 def ci95(series: pd.Series) -> tuple[float, float]:
@@ -108,6 +113,25 @@ def save_metadata(config: dict, output_dir: Path) -> None:
         "bess_enabled":   config.get("bess_enabled", False),
         "v2g_enabled":    config.get("v2g_enabled", False),
         "solver":         config.get("solver", ""),
+        "grid_cap_strain": config.get("grid_cap_strain", 1.0),
     }
     with open(output_dir / "metadata.json", "w") as f:
         json.dump(meta, f, indent=2)
+
+
+def validate_grid_cap_strain(values: list[float]) -> None:
+    for s in values:
+        if not (0.0 < s <= 1.0):
+            raise ValueError(
+                f"--grid-cap-strain must be in (0, 1]; got {s}"
+            )
+
+
+def strain_save_path(save_path: str, strain: float) -> Path:
+    """Return a per-strain subdirectory path.
+
+    'results/bench.csv', 0.75  →  'results/bench_s0_75/bench.csv'
+    """
+    p = Path(save_path)
+    safe = f"{strain:.2f}".replace(".", "_")
+    return p.parent / f"{p.stem}_s{safe}" / p.name
