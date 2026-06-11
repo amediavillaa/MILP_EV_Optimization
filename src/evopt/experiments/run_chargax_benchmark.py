@@ -287,11 +287,12 @@ def main(
             .mean()
             .round(2)
             .unstack("grid_cap_strain")
-            .sort_values(grid_cap_strain_values[0], ascending=False)
+            .sort_values(max(grid_cap_strain_values), ascending=False)
         )
         W = 70
         print(f"\n{'=' * W}")
-        print("  Cross-strain summary  (mean net_profit over seeds)")
+        ports_note = f"  (averaged over ports {ports})" if len(ports) > 1 else ""
+        print(f"  Cross-strain summary  (mean net_profit over seeds){ports_note}")
         print(f"{'=' * W}")
         print(strain_pivot.to_string())
         print()
