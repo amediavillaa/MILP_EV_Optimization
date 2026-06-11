@@ -68,4 +68,5 @@ def test_equal_share_respects_tighter_cap():
     power_half = sum(a * V for a in actions_half.values())
 
     # EqualShare splits P_max/N per car; halving P_max must halve total power
+    assert power_full > 0, "full-cap state produced zero total power — check _make_state"
     assert power_half <= power_full * 0.5 + 1e-6
