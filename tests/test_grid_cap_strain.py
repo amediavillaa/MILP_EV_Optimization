@@ -53,6 +53,27 @@ def _make_state(p_max_kw: float) -> dict:
     }
 
 
+def test_strain_save_path():
+    from pathlib import Path
+    from evopt.analysis.utils import strain_save_path
+
+    result = strain_save_path("results/bench.csv", 0.75)
+    assert result == Path("results/bench_s0_75/bench.csv")
+
+    result_one = strain_save_path("results/bench.csv", 1.0)
+    assert result_one == Path("results/bench_s1_00/bench.csv")
+
+
+def test_format_experiment_id_with_strain():
+    from evopt.analysis.utils import format_experiment_id
+
+    base = format_experiment_id(ports=[3], horizons=[12], tariff="0.75")
+    assert "_s" not in base
+
+    with_strain = format_experiment_id(ports=[3], horizons=[12], tariff="0.75", grid_cap_strain=0.75)
+    assert with_strain == base + "_s0_75"
+
+
 def test_equal_share_respects_tighter_cap():
     from evopt.controllers.equal_share import EqualShareController
     ctrl = EqualShareController()

@@ -91,7 +91,8 @@ def test_save_metadata_contains_keys(tmp_path):
     data = json.loads((tmp_path / "metadata.json").read_text())
     for key in ["experiment_id", "timestamp", "git_commit", "hostname",
                 "python_version", "ports", "horizons", "n_seeds",
-                "tariff", "bess_enabled", "v2g_enabled", "solver"]:
+                "tariff", "bess_enabled", "v2g_enabled", "solver",
+                "grid_cap_strain"]:
         assert key in data, f"missing key: {key}"
 
 

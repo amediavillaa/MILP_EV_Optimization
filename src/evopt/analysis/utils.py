@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 import socket
 import subprocess
@@ -64,7 +65,7 @@ def format_experiment_id(
     base = f"{safe_tariff}_p{p_str}_h{h_str}"
     if grid_cap_strain == 1.0:
         return base
-    safe_strain = f"{grid_cap_strain:.2f}".replace(".", "_")
+    safe_strain = _safe_strain_str(grid_cap_strain)
     return f"{base}_s{safe_strain}"
 
 
@@ -119,9 +120,13 @@ def save_metadata(config: dict, output_dir: Path) -> None:
         json.dump(meta, f, indent=2)
 
 
+def _safe_strain_str(strain: float) -> str:
+    return f"{strain:.2f}".replace(".", "_")
+
+
 def validate_grid_cap_strain(values: list[float]) -> None:
     for s in values:
-        if not (0.0 < s <= 1.0):
+        if not math.isfinite(s) or not (0.0 < s <= 1.0):
             raise ValueError(
                 f"--grid-cap-strain must be in (0, 1]; got {s}"
             )
@@ -132,6 +137,7 @@ def strain_save_path(save_path: str, strain: float) -> Path:
 
     'results/bench.csv', 0.75  →  'results/bench_s0_75/bench.csv'
     """
+    validate_grid_cap_strain([strain])
     p = Path(save_path)
-    safe = f"{strain:.2f}".replace(".", "_")
+    safe = _safe_strain_str(strain)
     return p.parent / f"{p.stem}_s{safe}" / p.name
