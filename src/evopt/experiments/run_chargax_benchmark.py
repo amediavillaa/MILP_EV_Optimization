@@ -28,7 +28,14 @@ from evopt.env.chargax_wrapper import ChargaxWrapper
 from evopt.experiments.station_configs import build_simple_station, build_station_with_battery
 
 import sys
-from evopt.analysis.utils import format_experiment_id, save_metadata
+from pathlib import Path
+
+from evopt.analysis.utils import (
+    format_experiment_id,
+    save_metadata,
+    strain_save_path,
+    validate_grid_cap_strain,
+)
 
 _METRICS = [
     "net_profit", "total_revenue", "total_cost",
@@ -162,6 +169,7 @@ def main(
     bess_derating:          float            = 1.0,
     save_path:              str | None       = None,
     cli_command:            str              = "",
+    grid_cap_strain_values: list[float]      = None,
 ) -> None:
     VOLTAGE           = 400.0
     I_MAX             = 32.0
@@ -174,6 +182,9 @@ def main(
         horizons = [12]
     if ports is None:
         ports = [3]
+    if grid_cap_strain_values is None:
+        grid_cap_strain_values = [1.0]
+    validate_grid_cap_strain(grid_cap_strain_values)
 
     tariff_str = (
         f"dynamic:{ev_markup}" if ev_markup is not None
@@ -184,7 +195,7 @@ def main(
         ports=ports, horizons=horizons, tariff=tariff_str,
     )
 
-    per_port_raw_dfs: list[pd.DataFrame] = []
+    per_port_raw_dfs:   list[pd.DataFrame] = []
 
     print(f"Ports     : {ports}")
     print(f"Horizons  : {horizons}")
@@ -204,38 +215,52 @@ def main(
     per_port_summaries: list[pd.DataFrame] = []
 
     for n_ports in ports:
-        P_MAX_KW = n_ports * KW_PER_PORT   # scales with port count for consistent utilization
-        W = 70
-        print(f"\n{'=' * W}")
-        print(f"  Ports = {n_ports}  |  grid cap = {P_MAX_KW} kW  |  I_max = {I_MAX} A")
-        print(f"{'=' * W}")
+        P_MAX_KW = n_ports * KW_PER_PORT
+        for grid_cap_strain in grid_cap_strain_values:
+            P_MAX_KW_adj = P_MAX_KW * grid_cap_strain
+            strain_id = format_experiment_id(
+                ports=[n_ports], horizons=horizons, tariff=tariff_str,
+                grid_cap_strain=grid_cap_strain,
+            )
+            W = 70
+            strain_label = (
+                f"  (grid cap strain = {grid_cap_strain:.2f})"
+                if grid_cap_strain != 1.0 else ""
+            )
+            print(f"\n{'=' * W}")
+            print(f"  Ports = {n_ports}  |  grid cap = {P_MAX_KW_adj:.1f} kW"
+                  f"  |  I_max = {I_MAX} A{strain_label}")
+            print(f"{'=' * W}")
 
-        df = _run_one_config(
-            n_ports=n_ports, n_seeds=n_seeds, horizons=horizons,
-            ev_tariff=ev_tariff, ev_markup=ev_markup, voltage=VOLTAGE, i_max=I_MAX,
-            p_max_kw=P_MAX_KW, v_bess=V_BESS, i_bess=I_BESS,
-            p_bess_max_kw=P_BESS_MAX_KW, use_bess=use_bess,
-            allow_discharging=allow_discharging,
-            allow_bess_discharging=allow_bess_discharging,
-            must_serve=must_serve,
-            bess_derating=bess_derating,
-        )
-        raw = df.copy()
-        raw["ports"]         = n_ports
-        raw["experiment_id"] = experiment_id
-        raw["tariff"]        = tariff_str
-        raw["bess_enabled"]  = use_bess
-        raw["v2g_enabled"]   = allow_discharging and use_bess
-        raw["solver"]        = "highs"
-        per_port_raw_dfs.append(raw)
-        summary = _make_summary(df)
-        print(summary.to_string())
+            df = _run_one_config(
+                n_ports=n_ports, n_seeds=n_seeds, horizons=horizons,
+                ev_tariff=ev_tariff, ev_markup=ev_markup, voltage=VOLTAGE, i_max=I_MAX,
+                p_max_kw=P_MAX_KW_adj, v_bess=V_BESS, i_bess=I_BESS,
+                p_bess_max_kw=P_BESS_MAX_KW, use_bess=use_bess,
+                allow_discharging=allow_discharging,
+                allow_bess_discharging=allow_bess_discharging,
+                must_serve=must_serve,
+                bess_derating=bess_derating,
+            )
+            raw = df.copy()
+            raw["ports"]            = n_ports
+            raw["grid_cap_strain"]  = grid_cap_strain
+            raw["experiment_id"]    = strain_id
+            raw["tariff"]           = tariff_str
+            raw["bess_enabled"]     = use_bess
+            raw["v2g_enabled"]      = allow_discharging and use_bess
+            raw["solver"]           = "highs"
+            per_port_raw_dfs.append(raw)
 
-        summary = summary.copy()
-        summary["ports"] = n_ports
-        per_port_summaries.append(summary)
+            summary = _make_summary(df)
+            print(summary.to_string())
 
-    if len(ports) > 1:
+            summary = summary.copy()
+            summary["ports"]           = n_ports
+            summary["grid_cap_strain"] = grid_cap_strain
+            per_port_summaries.append(summary)
+
+    if len(ports) > 1 and len(grid_cap_strain_values) == 1:
         combined = pd.concat(per_port_summaries).reset_index()
         pivot = (
             combined
@@ -254,27 +279,72 @@ def main(
         print(pivot.to_string())
         print()
 
-    if save_path is not None:
-        from pathlib import Path
-        save_p = Path(save_path)
-        save_p.parent.mkdir(parents=True, exist_ok=True)
-        combined_raw = pd.concat(per_port_raw_dfs, ignore_index=True)
-        combined_raw.to_csv(save_p, index=False)
-        print(f"\nResults saved to {save_p}")
-        save_metadata(
-            config={
-                "experiment_id":  experiment_id,
-                "cli_command":    cli_command,
-                "ports":          ports,
-                "horizons":       horizons,
-                "n_seeds":        n_seeds,
-                "tariff":         tariff_str,
-                "bess_enabled":   use_bess,
-                "v2g_enabled":    allow_discharging and use_bess,
-                "solver":         "highs",
-            },
-            output_dir=save_p.parent,
+    if len(grid_cap_strain_values) > 1:
+        combined_strain = pd.concat(per_port_raw_dfs, ignore_index=True)
+        strain_pivot = (
+            combined_strain
+            .groupby(["controller", "grid_cap_strain"])["net_profit"]
+            .mean()
+            .round(2)
+            .unstack("grid_cap_strain")
+            .sort_values(grid_cap_strain_values[0], ascending=False)
         )
+        W = 70
+        print(f"\n{'=' * W}")
+        print("  Cross-strain summary  (mean net_profit over seeds)")
+        print(f"{'=' * W}")
+        print(strain_pivot.to_string())
+        print()
+
+    if save_path is not None:
+        combined_raw = pd.concat(per_port_raw_dfs, ignore_index=True)
+        multi_strain = len(grid_cap_strain_values) > 1
+
+        if multi_strain:
+            for strain in grid_cap_strain_values:
+                strain_df = combined_raw[combined_raw["grid_cap_strain"] == strain]
+                strain_p  = strain_save_path(save_path, strain)
+                strain_p.parent.mkdir(parents=True, exist_ok=True)
+                strain_df.to_csv(strain_p, index=False)
+                print(f"\nResults saved to {strain_p}")
+                save_metadata(
+                    config={
+                        "experiment_id":   format_experiment_id(
+                            ports=ports, horizons=horizons, tariff=tariff_str,
+                            grid_cap_strain=strain,
+                        ),
+                        "cli_command":     cli_command,
+                        "ports":           ports,
+                        "horizons":        horizons,
+                        "n_seeds":         n_seeds,
+                        "tariff":          tariff_str,
+                        "bess_enabled":    use_bess,
+                        "v2g_enabled":     allow_discharging and use_bess,
+                        "solver":          "highs",
+                        "grid_cap_strain": strain,
+                    },
+                    output_dir=strain_p.parent,
+                )
+        else:
+            save_p = Path(save_path)
+            save_p.parent.mkdir(parents=True, exist_ok=True)
+            combined_raw.to_csv(save_p, index=False)
+            print(f"\nResults saved to {save_p}")
+            save_metadata(
+                config={
+                    "experiment_id":   experiment_id,
+                    "cli_command":     cli_command,
+                    "ports":           ports,
+                    "horizons":        horizons,
+                    "n_seeds":         n_seeds,
+                    "tariff":          tariff_str,
+                    "bess_enabled":    use_bess,
+                    "v2g_enabled":     allow_discharging and use_bess,
+                    "solver":          "highs",
+                    "grid_cap_strain": grid_cap_strain_values[0],
+                },
+                output_dir=save_p.parent,
+            )
 
 
 if __name__ == "__main__":
@@ -300,6 +370,12 @@ if __name__ == "__main__":
         help="BESS charge/discharge capacity derating factor in [0,1] (default: 1.0 = no derating)",
     )
     parser.add_argument(
+        "--grid-cap-strain", type=float, nargs="+", default=[1.0],
+        metavar="STRAIN",
+        help="Grid cap multiplier(s) in (0, 1]. 1.0 = original cap, 0.5 = half cap. "
+             "Multiple values run a sweep, e.g. --grid-cap-strain 1.0 0.75 0.5 0.25",
+    )
+    parser.add_argument(
         "--save", type=str, default=None, metavar="PATH",
         help="Save raw per-seed results as CSV to PATH (e.g. results/benchmark.csv). "
              "A metadata.json sidecar is written to the same directory.",
@@ -319,4 +395,5 @@ if __name__ == "__main__":
         bess_derating=args.bess_derating,
         save_path=args.save,
         cli_command=" ".join(sys.argv),
+        grid_cap_strain_values=args.grid_cap_strain,
     )
