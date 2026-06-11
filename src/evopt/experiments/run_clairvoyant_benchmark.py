@@ -26,6 +26,7 @@ from evopt.controllers.offline_lp_controller import (
     build_offline_schedule,
 )
 from evopt.env.chargax_wrapper import ChargaxWrapper
+from evopt.analysis.utils import strain_save_path, validate_grid_cap_strain
 from evopt.experiments.station_configs import build_station_with_battery
 
 VOLTAGE       = 400.0
@@ -66,13 +67,15 @@ def _collect_scenario(env, wrapper: ChargaxWrapper, seed: int) -> dict:
 
 
 def _run_one_port(
-    n_ports:  int,
-    n_seeds:  int,
-    horizons: list[int],
+    n_ports:         int,
+    n_seeds:         int,
+    horizons:        list[int],
+    grid_cap_strain: float = 1.0,
 ) -> list[dict]:
-    P_MAX_KW = n_ports * KW_PER_PORT
+    P_MAX_KW     = n_ports * KW_PER_PORT
+    P_MAX_KW_adj = P_MAX_KW * grid_cap_strain
     station  = build_station_with_battery(
-        n_ports=n_ports, v=VOLTAGE, i_max=I_MAX, p_max_kw=P_MAX_KW,
+        n_ports=n_ports, v=VOLTAGE, i_max=I_MAX, p_max_kw=P_MAX_KW_adj,
         batt_capacity_kwh=30.0, batt_max_kw=P_BESS_MAX_KW, batt_efficiency=0.95,
     )
     env = Chargax(
@@ -82,7 +85,7 @@ def _run_one_port(
         renormalize_currents=False,
     )
     wrapper = ChargaxWrapper(
-        n_ports=n_ports, v=VOLTAGE, i_max=I_MAX, p_max_kw=P_MAX_KW,
+        n_ports=n_ports, v=VOLTAGE, i_max=I_MAX, p_max_kw=P_MAX_KW_adj,
         num_discretization_levels=10, minutes_per_step=5,
         ev_tariff=EV_TARIFF,
         v_bess=V_BESS, I_high=I_BESS, I_low=I_BESS,
@@ -125,6 +128,7 @@ def _run_one_port(
                 "ports":            n_ports,
                 "seed":             seed,
                 "horizon":          h,
+                "grid_cap_strain":  grid_cap_strain,
                 "offline_profit":   round(offline_profit, 4),
                 "mpc_profit":       round(mpc_profit, 4),
                 "optimality_gap":   round(gap, 6),
@@ -136,6 +140,7 @@ def _run_one_port(
             "ports":            n_ports,
             "seed":             seed,
             "horizon":          None,
+            "grid_cap_strain":  grid_cap_strain,
             "offline_profit":   round(offline_result.net_profit, 4),
             "mpc_profit":       round(mc_result.net_profit, 4),
             "optimality_gap":   round(
@@ -150,26 +155,33 @@ def _run_one_port(
 
 
 def main(
-    n_seeds:  int            = 10,
-    horizons: list[int]      = None,
-    ports:    list[int]      = None,
-    save_path: str | None    = None,
+    n_seeds:                int              = 10,
+    horizons:               list[int]        = None,
+    ports:                  list[int]        = None,
+    save_path:              str | None       = None,
+    grid_cap_strain_values: list[float]      = None,
 ) -> pd.DataFrame:
     if horizons is None:
         horizons = [1, 3, 6, 12]
     if ports is None:
         ports = [3, 6, 12]
+    if grid_cap_strain_values is None:
+        grid_cap_strain_values = [1.0]
+    validate_grid_cap_strain(grid_cap_strain_values)
 
     all_records = []
     for n_ports in ports:
-        all_records.extend(_run_one_port(n_ports, n_seeds, horizons))
+        for grid_cap_strain in grid_cap_strain_values:
+            all_records.extend(
+                _run_one_port(n_ports, n_seeds, horizons, grid_cap_strain)
+            )
 
     df = pd.DataFrame(all_records)
 
     print("\n=== Optimality gap: (offline_profit - mpc_profit) / offline_profit ===")
     summary = (
         df[df["horizon"].notna()]
-        .groupby(["ports", "horizon"])["optimality_gap"]
+        .groupby(["ports", "horizon", "grid_cap_strain"])["optimality_gap"]
         .agg(mean="mean", std="std")
         .round(4)
         .reset_index()
@@ -177,10 +189,19 @@ def main(
     print(summary.to_string(index=False))
 
     if save_path is not None:
-        out = Path(save_path)
-        out.parent.mkdir(parents=True, exist_ok=True)
-        df.to_csv(out, index=False)
-        print(f"\nSaved to {out}")
+        multi_strain = len(grid_cap_strain_values) > 1
+        if multi_strain:
+            for strain in grid_cap_strain_values:
+                strain_df = df[df["grid_cap_strain"] == strain]
+                strain_p  = strain_save_path(save_path, strain)
+                strain_p.parent.mkdir(parents=True, exist_ok=True)
+                strain_df.to_csv(strain_p, index=False)
+                print(f"\nSaved to {strain_p}")
+        else:
+            out = Path(save_path)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            df.to_csv(out, index=False)
+            print(f"\nSaved to {out}")
 
     return df
 
@@ -191,10 +212,16 @@ if __name__ == "__main__":
     parser.add_argument("--horizons",type=int, nargs="+", default=[1, 3, 6, 12])
     parser.add_argument("--ports",   type=int, nargs="+", default=[3, 6, 12])
     parser.add_argument("--save",    type=str, default=None)
+    parser.add_argument(
+        "--grid-cap-strain", type=float, nargs="+", default=[1.0],
+        metavar="STRAIN",
+        help="Grid cap multiplier(s) in (0, 1]. 1.0 = original cap, 0.5 = half cap.",
+    )
     args = parser.parse_args()
     main(
         n_seeds=args.seeds,
         horizons=args.horizons,
         ports=args.ports,
         save_path=args.save,
+        grid_cap_strain_values=args.grid_cap_strain,
     )
