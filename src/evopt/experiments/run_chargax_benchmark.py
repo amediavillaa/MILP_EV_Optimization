@@ -260,6 +260,7 @@ def main(
             summary["grid_cap_strain"] = grid_cap_strain
             per_port_summaries.append(summary)
 
+    # cross-port pivot is suppressed when a strain sweep is active to avoid mixing strain levels
     if len(ports) > 1 and len(grid_cap_strain_values) == 1:
         combined = pd.concat(per_port_summaries).reset_index()
         pivot = (
@@ -303,7 +304,7 @@ def main(
 
         if multi_strain:
             for strain in grid_cap_strain_values:
-                strain_df = combined_raw[combined_raw["grid_cap_strain"] == strain]
+                strain_df = combined_raw[(combined_raw["grid_cap_strain"] - strain).abs() < 1e-9]
                 strain_p  = strain_save_path(save_path, strain)
                 strain_p.parent.mkdir(parents=True, exist_ok=True)
                 strain_df.to_csv(strain_p, index=False)
