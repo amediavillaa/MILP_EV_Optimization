@@ -10,7 +10,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 
 import jax
@@ -192,7 +191,7 @@ def main(
         multi_strain = len(grid_cap_strain_values) > 1
         if multi_strain:
             for strain in grid_cap_strain_values:
-                strain_df = df[df["grid_cap_strain"] == strain]
+                strain_df = df[(df["grid_cap_strain"] - strain).abs() < 1e-9]
                 strain_p  = strain_save_path(save_path, strain)
                 strain_p.parent.mkdir(parents=True, exist_ok=True)
                 strain_df.to_csv(strain_p, index=False)
