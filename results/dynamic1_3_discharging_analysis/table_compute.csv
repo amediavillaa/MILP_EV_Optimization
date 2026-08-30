@@ -1,0 +1,8 @@
+controller,total_compute_s,mean_step_ms
+equal_share,0.004,0.015
+max_charge,0.001,0.005
+milp_h1,3.323,11.537
+milp_h12,343.075,1191.232
+milp_h3,6.03,20.938
+milp_h6,7.306,25.367
+random,0.018,0.062

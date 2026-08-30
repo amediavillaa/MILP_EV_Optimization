@@ -1,0 +1,25 @@
+{
+  "experiment_id": "dynamic_1_5_p3_6_12_h1_3_6_12_s0_75",
+  "timestamp": "2026-06-15T01:26:10",
+  "git_commit": "9eeac70",
+  "cli_command": "C:\\Users\\amedi\\Desktop\\Publication_Work\\MILP_EV_Optimization\\src\\evopt\\experiments\\run_chargax_benchmark.py --ports 3 6 12 --horizons 1 3 6 12 --seeds 30 --grid-cap-strain 1.0 0.75 0.5 0.25 --tariff dynamic:1.5 --no-bess --save results/grid_cap_dynamic1_5_no_bess.csv",
+  "hostname": "AMS",
+  "python_version": "3.13.5",
+  "ports": [
+    3,
+    6,
+    12
+  ],
+  "horizons": [
+    1,
+    3,
+    6,
+    12
+  ],
+  "n_seeds": 30,
+  "tariff": "dynamic:1.5",
+  "bess_enabled": false,
+  "v2g_enabled": false,
+  "solver": "highs",
+  "grid_cap_strain": 0.75
+}

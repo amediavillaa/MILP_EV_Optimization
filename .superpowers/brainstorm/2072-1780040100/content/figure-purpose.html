@@ -1,0 +1,33 @@
+<h2>What should the figures communicate?</h2>
+<p class="subtitle">The tiny-cost case is a 3-port, 8-step scenario. Choose the primary story each figure needs to tell. You can pick multiple.</p>
+
+<div class="options" data-multiselect>
+  <div class="option" data-choice="soc" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>SoC trajectories</h3>
+      <p>Show how each car's state-of-charge evolves over time. Highlights Car 1's tight deadline and Car 5's late arrival.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="power" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Charging power schedule</h3>
+      <p>Show the LP's power allocation per port per timestep. Reveals how the grid-cap constraint shapes the solution.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="tariff" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Tariff-aware cost optimisation</h3>
+      <p>Overlay buy-price on the charging schedule to show the LP exploiting cheap off-peak slots (within deadlines).</p>
+    </div>
+  </div>
+  <div class="option" data-choice="scenario" onclick="toggleSelect(this)">
+    <div class="letter">D</div>
+    <div class="content">
+      <h3>Scenario / assignment table</h3>
+      <p>A table (or Gantt) summarising car parameters: port, arrival, departure, initial SoC, target SoC, rejection.</p>
+    </div>
+  </div>
+</div>

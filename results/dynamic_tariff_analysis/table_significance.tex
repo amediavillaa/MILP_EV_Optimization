@@ -1,0 +1,27 @@
+\begin{tabular}{lllrrrrrrrr}
+\toprule
+controller_a & controller_b & metric & n_pairs & mean_a & mean_b & mean_diff & p_ttest & p_wilcoxon & cohen_d & is_significant \\
+\midrule
+equal_share & max_charge & net_profit & 30 & 61.3986 & 78.3452 & -16.9466 & 0.0000 & 0.0000 & -1.6967 & True \\
+equal_share & milp_h1 & net_profit & 30 & 61.3986 & 78.2964 & -16.8978 & 0.0000 & 0.0000 & -1.6894 & True \\
+equal_share & milp_h12 & net_profit & 30 & 61.3986 & 78.2954 & -16.8968 & 0.0000 & 0.0000 & -1.6891 & True \\
+equal_share & milp_h3 & net_profit & 30 & 61.3986 & 78.3235 & -16.9249 & 0.0000 & 0.0000 & -1.6967 & True \\
+equal_share & milp_h6 & net_profit & 30 & 61.3986 & 78.3325 & -16.9339 & 0.0000 & 0.0000 & -1.6976 & True \\
+equal_share & random & net_profit & 30 & 61.3986 & 72.5039 & -11.1053 & 0.0000 & 0.0000 & -1.3052 & True \\
+max_charge & milp_h1 & net_profit & 30 & 78.3452 & 78.2964 & 0.0488 & 0.2398 & 0.1212 & 0.2191 & False \\
+max_charge & milp_h12 & net_profit & 30 & 78.3452 & 78.2954 & 0.0498 & 0.3005 & 0.9826 & 0.1925 & False \\
+max_charge & milp_h3 & net_profit & 30 & 78.3452 & 78.3235 & 0.0217 & 0.0966 & 0.8086 & 0.3135 & False \\
+max_charge & milp_h6 & net_profit & 30 & 78.3452 & 78.3325 & 0.0127 & 0.2356 & 0.4981 & 0.2211 & False \\
+max_charge & random & net_profit & 30 & 78.3452 & 72.5039 & 5.8413 & 0.0000 & 0.0000 & 3.0532 & True \\
+milp_h1 & milp_h12 & net_profit & 30 & 78.2964 & 78.2954 & 0.0010 & 0.9056 & 0.3485 & 0.0219 & False \\
+milp_h1 & milp_h3 & net_profit & 30 & 78.2964 & 78.3235 & -0.0271 & 0.4251 & 0.1925 & -0.1477 & False \\
+milp_h1 & milp_h6 & net_profit & 30 & 78.2964 & 78.3325 & -0.0362 & 0.2763 & 0.0172 & -0.2026 & False \\
+milp_h1 & random & net_profit & 30 & 78.2964 & 72.5039 & 5.7924 & 0.0000 & 0.0000 & 3.0606 & True \\
+milp_h12 & milp_h3 & net_profit & 30 & 78.2954 & 78.3235 & -0.0282 & 0.4824 & 0.8383 & -0.1299 & False \\
+milp_h12 & milp_h6 & net_profit & 30 & 78.2954 & 78.3325 & -0.0372 & 0.3488 & 0.2855 & -0.1739 & False \\
+milp_h12 & random & net_profit & 30 & 78.2954 & 72.5039 & 5.7914 & 0.0000 & 0.0000 & 3.0781 & True \\
+milp_h3 & milp_h6 & net_profit & 30 & 78.3235 & 78.3325 & -0.0090 & 0.1756 & 0.1797 & -0.2535 & False \\
+milp_h3 & random & net_profit & 30 & 78.3235 & 72.5039 & 5.8196 & 0.0000 & 0.0000 & 3.0716 & True \\
+milp_h6 & random & net_profit & 30 & 78.3325 & 72.5039 & 5.8286 & 0.0000 & 0.0000 & 3.0747 & True \\
+\bottomrule
+\end{tabular}

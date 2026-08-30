@@ -26,7 +26,7 @@ Hook → Why naive heuristics break → System architecture → Results as valid
 
 ---
 
-## Slide Structure (12 slides, ~75 seconds each)
+## Slide Structure (11 slides, ~80 seconds each)
 
 | # | Title | Purpose |
 |---|-------|---------|

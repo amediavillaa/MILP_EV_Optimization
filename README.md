@@ -253,8 +253,8 @@ Both test directories are included in `pyproject.toml`'s `testpaths`.
 
 ## Research Goals
 
-- LP as interpretable baseline vs. reinforcement learning for cost minimisation
+- LP as interpretable baseline vs. equal allocation baseline for cost minimisation
 - Scalability study across port counts (3, 6, 12)
-- Horizon sensitivity: H=1 (greedy) vs. H=12 (1-hour lookahead) vs. H=24
+- Horizon sensitivity: H=1 (greedy) vs. H=3 (15 minute lookahead) vs. H=6 (30 minute lookahead) vs. H=12 (1-hour lookahead) 
 - BESS arbitrage value at different electricity price spreads
 - Must-serve vs. profit trade-off under tight grid constraints
