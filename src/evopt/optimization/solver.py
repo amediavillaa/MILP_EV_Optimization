@@ -6,8 +6,8 @@ from pyomo.opt import TerminationCondition
 _HIGHS_TIME_LIMIT_S = 2.0
 
 
-def solve(m: ConcreteModel, solver: str = "gurobi", verbose: bool = False):
-    """Solve in-place. Swap solver='gurobi' for production use."""
+def solve(m: ConcreteModel, solver: str = "highs", verbose: bool = False):
+    """Solve in-place. Pass solver='gurobi' if a licensed Gurobi install is available."""
     opt = SolverFactory(solver)
     options = {"time_limit": _HIGHS_TIME_LIMIT_S} if solver == "highs" else {}
     result = opt.solve(m, tee=verbose, options=options)

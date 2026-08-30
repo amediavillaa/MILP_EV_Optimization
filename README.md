@@ -109,7 +109,8 @@ pip install -e ".[dev]"
 
 Requires Python ≥ 3.11, Pyomo, HiGHS (via `highspy`), JAX, and Chargax.
 
-HiGHS is the default open-source solver. To use Gurobi, pass `solver="gurobi"` to `LPController`.
+HiGHS is the default open-source solver. To use Gurobi (requires a license), install the
+`gurobi` extra — `pip install -e ".[dev,gurobi]"` — and pass `solver="gurobi"` to `LPController`.
 
 ---
 

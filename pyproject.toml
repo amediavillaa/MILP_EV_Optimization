@@ -8,6 +8,7 @@ version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
     "pyomo>=6.0",
+    "highspy>=1.11",
     "pandas>=2.0",
     "jax>=0.4.0",
     "matplotlib>=3.7",
@@ -18,7 +19,10 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
-    "chargax @ git+https://github.com/ponseko/chargax.git",
+    "chargax @ git+https://github.com/ponseko/chargax.git@177debd28e3b99f4101bb74856745146936387ca",
+]
+gurobi = [
+    "gurobipy>=13.0",
 ]
 
 [tool.setuptools.packages.find]
