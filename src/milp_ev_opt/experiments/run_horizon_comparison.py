@@ -17,9 +17,10 @@ from milp_ev_opt.benchmarking.storage import build_summary
 from milp_ev_opt.controllers.lp_controller import LPController
 from milp_ev_opt.env.chargax_wrapper import ChargaxWrapper
 from milp_ev_opt.experiments.station_configs import build_station_with_battery
+from milp_ev_opt.paths import default_results_dir
 
 
-def main(n_seeds: int = 5, output_dir: Path = Path("results/horizon")) -> None:
+def main(n_seeds: int = 5, output_dir: Path = default_results_dir("horizon")) -> None:
     N_PORTS       = 3
     VOLTAGE       = 400.0
     I_MAX         = 32.0
@@ -87,6 +88,8 @@ def main(n_seeds: int = 5, output_dir: Path = Path("results/horizon")) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--seeds",  type=int, default=5)
-    parser.add_argument("--output", type=str, default="results/horizon")
+    parser.add_argument("--output", type=str, default=None,
+                        help="Output directory (default: <project_root>/results/horizon)")
     args = parser.parse_args()
-    main(n_seeds=args.seeds, output_dir=Path(args.output))
+    output_dir = Path(args.output) if args.output else default_results_dir("horizon")
+    main(n_seeds=args.seeds, output_dir=output_dir)

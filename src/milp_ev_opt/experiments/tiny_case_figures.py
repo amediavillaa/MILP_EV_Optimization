@@ -18,6 +18,7 @@ from milp_ev_opt.analysis.utils import (
 from milp_ev_opt.experiments.run_tiny_cost_case import _DATA
 from milp_ev_opt.optimization.model import build_ev_lp_model
 from milp_ev_opt.optimization.solver import solve
+from milp_ev_opt.paths import default_results_dir
 
 
 @dataclass
@@ -411,13 +412,13 @@ def plot_scenario_gantt(res: TinyResults, out: Path) -> None:
     save_figure(fig, Path(out) / "scenario_gantt.pdf")
 
 
-def main(out_dir: Path = Path("results/tiny_cost_case")) -> None:
+def main(out_dir: Path = default_results_dir("tiny_cost_case")) -> None:
     """Generate all publication figures and tables for the tiny cost case.
 
     Parameters
     ----------
     out_dir : Path
-        Output directory for figures and tables. Default: results/tiny_cost_case
+        Output directory for figures and tables. Default: <project_root>/results/tiny_cost_case
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
