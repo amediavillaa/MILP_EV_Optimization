@@ -22,8 +22,8 @@ def test_bess_soc_uses_raw_current_when_charging(minimal_bess_data):
     Set SoCB_min = 13.9 (above eta max, below raw max). LP must be feasible
     only if using raw current; infeasible if eta is applied to SoC.
     """
-    from evopt.optimization.model import build_rolling_model
-    from evopt.optimization.solver import solve
+    from milp_ev_opt.optimization.model import build_rolling_model
+    from milp_ev_opt.optimization.solver import solve
     from pyomo.opt import TerminationCondition
 
     data = dict(minimal_bess_data)
@@ -61,7 +61,7 @@ def test_bess_charging_grid_cost_includes_eta_penalty(minimal_bess_data):
       expected grid cost = 10/0.95 × 400 × 0.10 × 1.0 / 1000 ≈ 0.42105
       without eta:         10        × 400 × 0.10 × 1.0 / 1000  = 0.40000
     """
-    from evopt.optimization.model import build_ev_lp_model
+    from milp_ev_opt.optimization.model import build_ev_lp_model
 
     m = build_ev_lp_model(minimal_bess_data)
 
@@ -96,7 +96,7 @@ def test_bess_discharging_grid_saving_includes_eta_reduction(minimal_bess_data):
       without eta:                 10 × 400 × 0.30 × 1.0 / 1000  = 1.20
     Objective = -(revenue - grid_cost) = grid_cost = -saving (negative = profit gained).
     """
-    from evopt.optimization.model import build_ev_lp_model
+    from milp_ev_opt.optimization.model import build_ev_lp_model
 
     m = build_ev_lp_model(minimal_bess_data)
 

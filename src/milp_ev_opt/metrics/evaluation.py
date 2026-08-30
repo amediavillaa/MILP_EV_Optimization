@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import statistics
-from evopt.benchmarking.results import ChargaxSimResults
+from milp_ev_opt.benchmarking.results import ChargaxSimResults
 
 
 def compute_summary_metrics(results: list[ChargaxSimResults]) -> dict:

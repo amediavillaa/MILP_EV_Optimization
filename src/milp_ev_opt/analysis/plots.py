@@ -1,4 +1,4 @@
-# src/evopt/analysis/plots.py
+# src/milp_ev_opt/analysis/plots.py
 """Publication-quality charts for EV benchmark results."""
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from evopt.analysis.utils import apply_pub_style, colorblind_palette, save_figure
+from milp_ev_opt.analysis.utils import apply_pub_style, colorblind_palette, save_figure
 
 
 def _horizon_agg(df: pd.DataFrame, metric: str) -> pd.DataFrame:

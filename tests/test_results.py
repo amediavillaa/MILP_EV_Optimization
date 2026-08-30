@@ -1,5 +1,5 @@
 import pytest
-from evopt.benchmarking.results import ChargaxSimResults, StepRecord
+from milp_ev_opt.benchmarking.results import ChargaxSimResults, StepRecord
 
 
 def _make_step(t: int) -> StepRecord:

@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
 import pytest
-from evopt.benchmarking.results import ChargaxSimResults, StepRecord
-from evopt.benchmarking import storage
+from milp_ev_opt.benchmarking.results import ChargaxSimResults, StepRecord
+from milp_ev_opt.benchmarking import storage
 
 
 def _make_result(name: str, seed: int, profit: float) -> ChargaxSimResults:

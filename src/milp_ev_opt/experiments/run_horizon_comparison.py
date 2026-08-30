@@ -2,8 +2,8 @@
 run_horizon_comparison.py — Compare LPController performance across horizon lengths.
 
 Usage:
-    python -m evopt.experiments.run_horizon_comparison
-    python -m evopt.experiments.run_horizon_comparison --seeds 5 --output results/horizon
+    python -m milp_ev_opt.experiments.run_horizon_comparison
+    python -m milp_ev_opt.experiments.run_horizon_comparison --seeds 5 --output results/horizon
 """
 from __future__ import annotations
 
@@ -12,11 +12,11 @@ from pathlib import Path
 
 from chargax import Chargax
 
-from evopt.benchmarking.runner import BenchmarkRunner
-from evopt.benchmarking.storage import build_summary
-from evopt.controllers.lp_controller import LPController
-from evopt.env.chargax_wrapper import ChargaxWrapper
-from evopt.experiments.station_configs import build_station_with_battery
+from milp_ev_opt.benchmarking.runner import BenchmarkRunner
+from milp_ev_opt.benchmarking.storage import build_summary
+from milp_ev_opt.controllers.lp_controller import LPController
+from milp_ev_opt.env.chargax_wrapper import ChargaxWrapper
+from milp_ev_opt.experiments.station_configs import build_station_with_battery
 
 
 def main(n_seeds: int = 5, output_dir: Path = Path("results/horizon")) -> None:

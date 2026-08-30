@@ -17,7 +17,7 @@ import pytest
 
 def test_lp_charges_past_s_target_when_profitable():
     """LP must plan charging beyond s_target when p_sell > p_buy and s_cap allows."""
-    from evopt.controllers.lp_controller import LPController
+    from milp_ev_opt.controllers.lp_controller import LPController
 
     ctrl = LPController(horizon_steps=12, socb_min=0.0, socb_max=30.0)
     state = {
@@ -63,8 +63,8 @@ def test_rolling_model_feasible_with_soc_between_target_and_cap():
     New C8 (soc_car <= s_cap): soc_now <= s_cap is satisfied → feasible.
     """
     from pyomo.opt import TerminationCondition
-    from evopt.optimization.model import build_rolling_model
-    from evopt.optimization.solver import solve
+    from milp_ev_opt.optimization.model import build_rolling_model
+    from milp_ev_opt.optimization.solver import solve
 
     window = range(1, 13)
     data = {

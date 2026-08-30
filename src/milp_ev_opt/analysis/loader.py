@@ -1,4 +1,4 @@
-# src/evopt/analysis/loader.py
+# src/milp_ev_opt/analysis/loader.py
 """Load and clean benchmark result CSVs/JSONs into a tidy per-seed DataFrame."""
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from evopt.analysis.utils import extract_horizon
+from milp_ev_opt.analysis.utils import extract_horizon
 
 _METRIC_COLS = [
     "net_profit", "total_revenue", "total_cost",

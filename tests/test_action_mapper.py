@@ -1,7 +1,7 @@
 """Tests for discretize_amps bidirectional mode."""
 import pytest
 
-from evopt.env.action_mapper import discretize_amps
+from milp_ev_opt.env.action_mapper import discretize_amps
 
 
 def test_full_current_maps_to_max_level():

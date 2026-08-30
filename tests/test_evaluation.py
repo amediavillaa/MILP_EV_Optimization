@@ -5,9 +5,9 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from evopt.analysis.plots import plot_optimality_gap
-from evopt.benchmarking.results import ChargaxSimResults
-from evopt.metrics.evaluation import compute_summary_metrics
+from milp_ev_opt.analysis.plots import plot_optimality_gap
+from milp_ev_opt.benchmarking.results import ChargaxSimResults
+from milp_ev_opt.metrics.evaluation import compute_summary_metrics
 
 
 def _r(name: str, profit: float, served: int, rejected: int,

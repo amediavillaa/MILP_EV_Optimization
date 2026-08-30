@@ -1,5 +1,5 @@
 import pytest
-from evopt.controllers.chargax_baselines import MaxChargeController, RandomController
+from milp_ev_opt.controllers.chargax_baselines import MaxChargeController, RandomController
 
 
 def _make_state(n_cars: int = 2) -> dict:

@@ -2,14 +2,14 @@
 run_chargax_benchmark.py — Run all controllers through Chargax and print summary tables.
 
 Usage examples (see README for more details):
-    python -m evopt.experiments.run_chargax_benchmark
-    python -m evopt.experiments.run_chargax_benchmark --seeds 3
-    python -m evopt.experiments.run_chargax_benchmark --tariff dynamic:1.3
-    python -m evopt.experiments.run_chargax_benchmark --horizons 1 6 12 24
-    python -m evopt.experiments.run_chargax_benchmark --ports 3 6 12
-    python -m evopt.experiments.run_chargax_benchmark --ports 3 6 12 --horizons 1 12
-    python -m evopt.experiments.run_chargax_benchmark --no-bess
-    python -m evopt.experiments.run_chargax_benchmark --allow-discharging
+    python -m milp_ev_opt.experiments.run_chargax_benchmark
+    python -m milp_ev_opt.experiments.run_chargax_benchmark --seeds 3
+    python -m milp_ev_opt.experiments.run_chargax_benchmark --tariff dynamic:1.3
+    python -m milp_ev_opt.experiments.run_chargax_benchmark --horizons 1 6 12 24
+    python -m milp_ev_opt.experiments.run_chargax_benchmark --ports 3 6 12
+    python -m milp_ev_opt.experiments.run_chargax_benchmark --ports 3 6 12 --horizons 1 12
+    python -m milp_ev_opt.experiments.run_chargax_benchmark --no-bess
+    python -m milp_ev_opt.experiments.run_chargax_benchmark --allow-discharging
 """
 from __future__ import annotations
 
@@ -18,19 +18,19 @@ import argparse
 import pandas as pd
 from chargax import Chargax
 
-from evopt.benchmarking.results import ChargaxSimResults
-from evopt.benchmarking.runner import BenchmarkRunner
-from evopt.benchmarking.storage import build_summary_from_results
-from evopt.controllers.chargax_baselines import MaxChargeController, RandomController
-from evopt.controllers.equal_share import EqualShareController
-from evopt.controllers.lp_controller import LPController
-from evopt.env.chargax_wrapper import ChargaxWrapper
-from evopt.experiments.station_configs import build_simple_station, build_station_with_battery
+from milp_ev_opt.benchmarking.results import ChargaxSimResults
+from milp_ev_opt.benchmarking.runner import BenchmarkRunner
+from milp_ev_opt.benchmarking.storage import build_summary_from_results
+from milp_ev_opt.controllers.chargax_baselines import MaxChargeController, RandomController
+from milp_ev_opt.controllers.equal_share import EqualShareController
+from milp_ev_opt.controllers.lp_controller import LPController
+from milp_ev_opt.env.chargax_wrapper import ChargaxWrapper
+from milp_ev_opt.experiments.station_configs import build_simple_station, build_station_with_battery
 
 import sys
 from pathlib import Path
 
-from evopt.analysis.utils import (
+from milp_ev_opt.analysis.utils import (
     format_experiment_id,
     save_metadata,
     strain_save_path,

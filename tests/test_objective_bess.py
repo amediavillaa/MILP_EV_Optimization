@@ -4,7 +4,7 @@ from pyomo.environ import value
 
 def test_model_has_no_p_sell_bess(minimal_bess_data):
     """After fix, the LP model should not carry a p_sell_bess parameter."""
-    from evopt.optimization.model import build_ev_lp_model
+    from milp_ev_opt.optimization.model import build_ev_lp_model
 
     m = build_ev_lp_model(minimal_bess_data)
     assert not hasattr(m, "p_sell_bess")
@@ -18,7 +18,7 @@ def test_bess_discharge_reduces_objective_value(minimal_bess_data):
     Under the corrected grid_cost formula, each kWh discharged at t=2 saves
     0.30 in grid cost → more profit → lower objective (sense=minimize).
     """
-    from evopt.optimization.model import build_ev_lp_model
+    from milp_ev_opt.optimization.model import build_ev_lp_model
 
     m = build_ev_lp_model(minimal_bess_data)
 

@@ -1,4 +1,4 @@
-# src/evopt/analysis/utils.py
+# src/milp_ev_opt/analysis/utils.py
 """Shared utilities: styling, I/O helpers, statistical helpers, ID generation."""
 from __future__ import annotations
 

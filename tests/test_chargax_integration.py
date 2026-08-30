@@ -1,4 +1,4 @@
-from evopt.experiments.station_configs import build_simple_station
+from milp_ev_opt.experiments.station_configs import build_simple_station
 from chargax import ChargingStation
 
 
@@ -9,10 +9,10 @@ def test_build_simple_station_returns_charging_station():
 
 import jax
 import jax.numpy as jnp
-from evopt.benchmarking.runner import BenchmarkRunner
-from evopt.benchmarking import storage
-from evopt.env.chargax_wrapper import ChargaxWrapper
-from evopt.controllers.equal_share import EqualShareController
+from milp_ev_opt.benchmarking.runner import BenchmarkRunner
+from milp_ev_opt.benchmarking import storage
+from milp_ev_opt.env.chargax_wrapper import ChargaxWrapper
+from milp_ev_opt.controllers.equal_share import EqualShareController
 from chargax import Chargax
 
 

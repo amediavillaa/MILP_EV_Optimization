@@ -5,10 +5,10 @@ from pathlib import Path
 
 import jax
 
-from evopt.benchmarking import storage
-from evopt.benchmarking.results import ChargaxSimResults, StepRecord
-from evopt.controllers.base_controller import BaseController
-from evopt.env.chargax_wrapper import ChargaxWrapper
+from milp_ev_opt.benchmarking import storage
+from milp_ev_opt.benchmarking.results import ChargaxSimResults, StepRecord
+from milp_ev_opt.controllers.base_controller import BaseController
+from milp_ev_opt.env.chargax_wrapper import ChargaxWrapper
 
 
 class BenchmarkRunner:

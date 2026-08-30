@@ -1,6 +1,6 @@
 def test_lp_data_has_no_p_sell_bess():
     """_build_lp_data should not include p_sell_bess in the output dict."""
-    from evopt.controllers.lp_controller import LPController
+    from milp_ev_opt.controllers.lp_controller import LPController
 
     ctrl = LPController(horizon_steps=2)
     state = {

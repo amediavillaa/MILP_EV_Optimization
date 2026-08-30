@@ -21,7 +21,7 @@ def _make_evse_obs(connected: bool, soc_kw: float, capacity_kw: float,
 
 def test_wrapper_extract_state_has_no_p_sell_bess():
     """extract_state should not include p_sell_bess in the returned state dict."""
-    from evopt.env.chargax_wrapper import ChargaxWrapper
+    from milp_ev_opt.env.chargax_wrapper import ChargaxWrapper
 
     wrapper = ChargaxWrapper(n_ports=1, v=400.0, i_max=32.0, p_max_kw=6.0)
 
@@ -45,7 +45,7 @@ def test_wrapper_extract_state_has_no_p_sell_bess():
 
 def test_departure_fulfillment_below_target():
     """Car departing at soc=8kWh with target=10kWh should have fulfillment ratio 0.8."""
-    from evopt.env.chargax_wrapper import ChargaxWrapper
+    from milp_ev_opt.env.chargax_wrapper import ChargaxWrapper
 
     wrapper = ChargaxWrapper(n_ports=1, v=400.0, i_max=32.0, p_max_kw=6.0)
 
@@ -66,7 +66,7 @@ def test_departure_fulfillment_below_target():
 
 def test_departure_fulfillment_above_target_is_clamped():
     """Car departing at soc=12kWh with target=10kWh should have fulfillment ratio 1.0 (clamped)."""
-    from evopt.env.chargax_wrapper import ChargaxWrapper
+    from milp_ev_opt.env.chargax_wrapper import ChargaxWrapper
 
     wrapper = ChargaxWrapper(n_ports=1, v=400.0, i_max=32.0, p_max_kw=6.0)
 

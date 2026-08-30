@@ -1,4 +1,4 @@
-# src/evopt/analysis/correlation.py
+# src/milp_ev_opt/analysis/correlation.py
 """Pearson correlation matrix and summary for benchmark metrics."""
 from __future__ import annotations
 

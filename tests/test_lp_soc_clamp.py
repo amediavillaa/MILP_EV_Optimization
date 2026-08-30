@@ -36,7 +36,7 @@ def _make_state(soc_car0: float, soc_car1: float) -> dict:
 
 def test_soc_above_target_is_clamped_before_lp():
     """_solve passes soc_now clamped to s_target when soc_now > s_target."""
-    from evopt.controllers.lp_controller import LPController
+    from milp_ev_opt.controllers.lp_controller import LPController
 
     ctrl = LPController(horizon_steps=2)
     state = _make_state(soc_car0=12.0, soc_car1=5.0)  # car 0 is over-target (12 > 10)
@@ -47,7 +47,7 @@ def test_soc_above_target_is_clamped_before_lp():
         captured["soc_now"] = dict(soc_now)
         return None  # short-circuit LP solve
 
-    with patch("evopt.controllers.lp_controller.build_rolling_model", mock_build):
+    with patch("milp_ev_opt.controllers.lp_controller.build_rolling_model", mock_build):
         ctrl._solve(state)
 
     assert captured["soc_now"][0] == pytest.approx(10.0)   # clamped from 12.0
@@ -56,7 +56,7 @@ def test_soc_above_target_is_clamped_before_lp():
 
 def test_soc_at_target_is_unchanged():
     """_solve passes soc_now unchanged when soc_now == s_target."""
-    from evopt.controllers.lp_controller import LPController
+    from milp_ev_opt.controllers.lp_controller import LPController
 
     ctrl = LPController(horizon_steps=2)
     state = _make_state(soc_car0=10.0, soc_car1=5.0)  # car 0 exactly at target
@@ -67,7 +67,7 @@ def test_soc_at_target_is_unchanged():
         captured["soc_now"] = dict(soc_now)
         return None
 
-    with patch("evopt.controllers.lp_controller.build_rolling_model", mock_build):
+    with patch("milp_ev_opt.controllers.lp_controller.build_rolling_model", mock_build):
         ctrl._solve(state)
 
     assert captured["soc_now"][0] == pytest.approx(10.0)   # no change
@@ -76,7 +76,7 @@ def test_soc_at_target_is_unchanged():
 
 def test_soc_below_target_is_unchanged():
     """_solve passes soc_now unchanged when soc_now < s_target (normal case)."""
-    from evopt.controllers.lp_controller import LPController
+    from milp_ev_opt.controllers.lp_controller import LPController
 
     ctrl = LPController(horizon_steps=2)
     state = _make_state(soc_car0=3.0, soc_car1=5.0)
@@ -87,7 +87,7 @@ def test_soc_below_target_is_unchanged():
         captured["soc_now"] = dict(soc_now)
         return None
 
-    with patch("evopt.controllers.lp_controller.build_rolling_model", mock_build):
+    with patch("milp_ev_opt.controllers.lp_controller.build_rolling_model", mock_build):
         ctrl._solve(state)
 
     assert captured["soc_now"][0] == pytest.approx(3.0)

@@ -53,7 +53,7 @@ The LP is solved at every timestep over a rolling window of `H` steps. Car SoC a
 ## Repository Layout
 
 ```
-src/evopt/
+src/milp_ev_opt/
 ├── optimization/       LP model builders
 │   ├── model.py        build_ev_lp_model  (offline)  /  build_rolling_model (MPC step)
 │   ├── objective.py    profit-maximisation objective with BESS eta model
@@ -121,7 +121,7 @@ HiGHS is the default open-source solver. To use Gurobi (requires a license), ins
 The offline simulation solves the LP once over a fixed planning horizon with known arrivals, departures, and price schedule — no stochastic environment, no rolling window. It is the simplest way to inspect the LP's decisions and verify constraint behaviour.
 
 ```bash
-python -m evopt.experiments.run_tiny_cost_case
+python -m milp_ev_opt.experiments.run_tiny_cost_case
 ```
 
 Scenario: 3 ports, 8 one-hour steps, 3 cars (all arrive at t=1, deadline t=8). Grid cap 20 kW is tight — simultaneous full-rate charging would require 38.4 kW — so the LP must spread load across steps. Output shows the charging schedule (kW per port per step) and SoC trajectory per car.
@@ -129,8 +129,8 @@ Scenario: 3 ports, 8 one-hour steps, 3 cars (all arrive at t=1, deadline t=8). G
 To run the LP on a custom scenario from a Python script:
 
 ```python
-from evopt.optimization.model import build_ev_lp_model
-from evopt.optimization.solver import solve
+from milp_ev_opt.optimization.model import build_ev_lp_model
+from milp_ev_opt.optimization.solver import solve
 from pyomo.environ import value
 
 data = {
@@ -174,32 +174,32 @@ for j in m.J_ev:
 
 ```bash
 # Default: 3 ports, H=12, BESS enabled, fixed tariff 0.75 €/kWh, 10 seeds
-python -m evopt.experiments.run_chargax_benchmark
+python -m milp_ev_opt.experiments.run_chargax_benchmark
 
 # Sweep port counts and horizon lengths
-python -m evopt.experiments.run_chargax_benchmark --ports 3 6 12 --horizons 1 6 12 24
+python -m milp_ev_opt.experiments.run_chargax_benchmark --ports 3 6 12 --horizons 1 6 12 24
 
 # Dynamic tariff (LP earns live Chargax p_sell price)
-python -m evopt.experiments.run_chargax_benchmark --tariff dynamic
+python -m milp_ev_opt.experiments.run_chargax_benchmark --tariff dynamic
 
 # Cost-plus dynamic pricing (p_buy × 1.3)
-python -m evopt.experiments.run_chargax_benchmark --tariff dynamic:1.3
+python -m milp_ev_opt.experiments.run_chargax_benchmark --tariff dynamic:1.3
 
 # Disable BESS
-python -m evopt.experiments.run_chargax_benchmark --no-bess
+python -m milp_ev_opt.experiments.run_chargax_benchmark --no-bess
 
 # Enable BESS discharge (arbitrage)
-python -m evopt.experiments.run_chargax_benchmark --allow-bess-discharging
+python -m milp_ev_opt.experiments.run_chargax_benchmark --allow-bess-discharging
 
 # Disable must-serve constraints
-python -m evopt.experiments.run_chargax_benchmark --no-must-serve
+python -m milp_ev_opt.experiments.run_chargax_benchmark --no-must-serve
 ```
 
 ### Horizon comparison
 
 ```bash
-python -m evopt.experiments.run_horizon_comparison
-python -m evopt.experiments.run_horizon_comparison --seeds 5 --output results/horizon
+python -m milp_ev_opt.experiments.run_horizon_comparison
+python -m milp_ev_opt.experiments.run_horizon_comparison --seeds 5 --output results/horizon
 ```
 
 ### Key metrics reported

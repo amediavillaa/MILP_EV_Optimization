@@ -10,8 +10,8 @@ def test_background_load_limits_ev_charging(minimal_bess_data):
     (and I_bess_ch = 0) at t=1.  Without the fix L is silently ignored,
     so the LP charges the car freely.
     """
-    from evopt.optimization.model import build_ev_lp_model
-    from evopt.optimization.solver import solve
+    from milp_ev_opt.optimization.model import build_ev_lp_model
+    from milp_ev_opt.optimization.solver import solve
 
     data = dict(minimal_bess_data)
     data["L"] = {1: data["P_max"], 2: 0.0}   # full background at t=1 only
@@ -33,8 +33,8 @@ def test_background_load_limits_ev_charging(minimal_bess_data):
 
 def test_zero_background_load_does_not_restrict_charging(minimal_bess_data):
     """With L=0 (default), grid cap is fully available to EVs and BESS."""
-    from evopt.optimization.model import build_ev_lp_model
-    from evopt.optimization.solver import solve
+    from milp_ev_opt.optimization.model import build_ev_lp_model
+    from milp_ev_opt.optimization.solver import solve
 
     m = build_ev_lp_model(minimal_bess_data)
     solve(m, solver="highs")

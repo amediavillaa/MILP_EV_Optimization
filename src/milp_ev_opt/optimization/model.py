@@ -25,11 +25,11 @@ from pyomo.environ import (
     Var,
 )
 
-from evopt.optimization.objective   import (
+from milp_ev_opt.optimization.objective   import (
     add_offline_profit_objective,
     add_rolling_profit_objective,
 )
-from evopt.optimization.constraints import (
+from milp_ev_opt.optimization.constraints import (
     add_offline_constraints,
     add_rolling_constraints,
     add_must_serve_constraints,

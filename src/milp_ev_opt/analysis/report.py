@@ -1,4 +1,4 @@
-# src/evopt/analysis/report.py
+# src/milp_ev_opt/analysis/report.py
 """Generate benchmark_report.md and benchmark_report.html."""
 from __future__ import annotations
 

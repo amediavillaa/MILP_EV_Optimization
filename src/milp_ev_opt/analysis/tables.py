@@ -1,4 +1,4 @@
-# src/evopt/analysis/tables.py
+# src/milp_ev_opt/analysis/tables.py
 """Summary tables for benchmark results — each function saves .csv and .tex."""
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from evopt.analysis.utils import ci95
+from milp_ev_opt.analysis.utils import ci95
 
 _METRICS = [
     "net_profit", "total_revenue", "total_cost",

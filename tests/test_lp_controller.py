@@ -1,5 +1,5 @@
 import pytest
-from evopt.controllers.lp_controller import LPController
+from milp_ev_opt.controllers.lp_controller import LPController
 
 
 def _make_state(t: int, n_cars: int = 1, p_max_w: float = 10_000.0,

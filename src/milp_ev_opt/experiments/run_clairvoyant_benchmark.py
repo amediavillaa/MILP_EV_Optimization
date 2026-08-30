@@ -1,11 +1,11 @@
-# src/evopt/experiments/run_clairvoyant_benchmark.py
+# src/milp_ev_opt/experiments/run_clairvoyant_benchmark.py
 """
 run_clairvoyant_benchmark.py — Compare offline clairvoyant LP vs rolling MPC.
 
 Usage:
-    python -m evopt.experiments.run_clairvoyant_benchmark
-    python -m evopt.experiments.run_clairvoyant_benchmark --seeds 10 --ports 3 6 12
-    python -m evopt.experiments.run_clairvoyant_benchmark --save results/clairvoyant.csv
+    python -m milp_ev_opt.experiments.run_clairvoyant_benchmark
+    python -m milp_ev_opt.experiments.run_clairvoyant_benchmark --seeds 10 --ports 3 6 12
+    python -m milp_ev_opt.experiments.run_clairvoyant_benchmark --save results/clairvoyant.csv
 """
 from __future__ import annotations
 
@@ -16,17 +16,17 @@ import jax
 import pandas as pd
 from chargax import Chargax
 
-from evopt.benchmarking.runner import BenchmarkRunner
-from evopt.controllers.chargax_baselines import MaxChargeController
-from evopt.controllers.lp_controller import LPController
-from evopt.controllers.offline_lp_controller import (
+from milp_ev_opt.benchmarking.runner import BenchmarkRunner
+from milp_ev_opt.controllers.chargax_baselines import MaxChargeController
+from milp_ev_opt.controllers.lp_controller import LPController
+from milp_ev_opt.controllers.offline_lp_controller import (
     OfflineLPController,
     ScenarioCollector,
     build_offline_schedule,
 )
-from evopt.env.chargax_wrapper import ChargaxWrapper
-from evopt.analysis.utils import strain_save_path, validate_grid_cap_strain
-from evopt.experiments.station_configs import build_station_with_battery
+from milp_ev_opt.env.chargax_wrapper import ChargaxWrapper
+from milp_ev_opt.analysis.utils import strain_save_path, validate_grid_cap_strain
+from milp_ev_opt.experiments.station_configs import build_station_with_battery
 
 VOLTAGE       = 400.0
 I_MAX         = 32.0

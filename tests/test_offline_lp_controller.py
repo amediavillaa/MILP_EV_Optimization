@@ -1,5 +1,5 @@
 import pytest
-from evopt.controllers.offline_lp_controller import OfflineLPController, ScenarioCollector, build_offline_schedule
+from milp_ev_opt.controllers.offline_lp_controller import OfflineLPController, ScenarioCollector, build_offline_schedule
 
 
 def _make_state(t: int, cars: dict | None = None) -> dict:

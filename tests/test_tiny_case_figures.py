@@ -2,14 +2,14 @@ from __future__ import annotations
 import pytest
 from pathlib import Path
 
-from evopt.experiments.run_tiny_cost_case import _DATA
-from evopt.optimization.model import build_ev_lp_model
-from evopt.optimization.solver import solve
+from milp_ev_opt.experiments.run_tiny_cost_case import _DATA
+from milp_ev_opt.optimization.model import build_ev_lp_model
+from milp_ev_opt.optimization.solver import solve
 
 
 @pytest.fixture(scope="module")
 def res():
-    from evopt.experiments.tiny_case_figures import extract_results
+    from milp_ev_opt.experiments.tiny_case_figures import extract_results
     m = build_ev_lp_model(_DATA)
     solve(m, solver="highs")
     return extract_results(m, _DATA)
@@ -39,7 +39,7 @@ def test_car5_target_reached(res):
 
 
 def test_table_scenario_csv(tmp_path):
-    from evopt.experiments.tiny_case_figures import write_table_scenario
+    from milp_ev_opt.experiments.tiny_case_figures import write_table_scenario
     write_table_scenario(tmp_path)
     text = (tmp_path / "table_scenario.csv").read_text()
     assert "Car 4" in text
@@ -49,7 +49,7 @@ def test_table_scenario_csv(tmp_path):
 
 
 def test_table_scenario_tex(tmp_path):
-    from evopt.experiments.tiny_case_figures import write_table_scenario
+    from milp_ev_opt.experiments.tiny_case_figures import write_table_scenario
     write_table_scenario(tmp_path)
     tex = (tmp_path / "table_scenario.tex").read_text()
     assert r"\toprule" in tex
@@ -59,7 +59,7 @@ def test_table_scenario_tex(tmp_path):
 
 
 def test_table_solution_csv_metrics(tmp_path, res):
-    from evopt.experiments.tiny_case_figures import write_table_solution
+    from milp_ev_opt.experiments.tiny_case_figures import write_table_solution
     write_table_solution(res, tmp_path)
     text = (tmp_path / "table_solution.csv").read_text()
     assert "Revenue" in text
@@ -69,7 +69,7 @@ def test_table_solution_csv_metrics(tmp_path, res):
 
 
 def test_table_solution_tex(tmp_path, res):
-    from evopt.experiments.tiny_case_figures import write_table_solution
+    from milp_ev_opt.experiments.tiny_case_figures import write_table_solution
     write_table_solution(res, tmp_path)
     tex = (tmp_path / "table_solution.tex").read_text()
     assert r"\toprule" in tex
@@ -78,7 +78,7 @@ def test_table_solution_tex(tmp_path, res):
 
 
 def test_soc_trajectories_pdf(tmp_path, res):
-    from evopt.experiments.tiny_case_figures import plot_soc_trajectories
+    from milp_ev_opt.experiments.tiny_case_figures import plot_soc_trajectories
     plot_soc_trajectories(res, tmp_path)
     pdf = tmp_path / "soc_trajectories.pdf"
     assert pdf.exists()
@@ -87,7 +87,7 @@ def test_soc_trajectories_pdf(tmp_path, res):
 
 
 def test_charging_schedule_pdf(tmp_path, res):
-    from evopt.experiments.tiny_case_figures import plot_charging_schedule
+    from milp_ev_opt.experiments.tiny_case_figures import plot_charging_schedule
     plot_charging_schedule(res, tmp_path)
     pdf = tmp_path / "charging_schedule.pdf"
     assert pdf.exists()
@@ -96,7 +96,7 @@ def test_charging_schedule_pdf(tmp_path, res):
 
 
 def test_tariff_overlay_pdf(tmp_path, res):
-    from evopt.experiments.tiny_case_figures import plot_tariff_overlay
+    from milp_ev_opt.experiments.tiny_case_figures import plot_tariff_overlay
     plot_tariff_overlay(res, tmp_path)
     pdf = tmp_path / "tariff_overlay.pdf"
     assert pdf.exists()
@@ -105,7 +105,7 @@ def test_tariff_overlay_pdf(tmp_path, res):
 
 
 def test_scenario_gantt_pdf(tmp_path, res):
-    from evopt.experiments.tiny_case_figures import plot_scenario_gantt
+    from milp_ev_opt.experiments.tiny_case_figures import plot_scenario_gantt
     plot_scenario_gantt(res, tmp_path)
     pdf = tmp_path / "scenario_gantt.pdf"
     assert pdf.exists()
@@ -114,7 +114,7 @@ def test_scenario_gantt_pdf(tmp_path, res):
 
 
 def test_main_creates_all_outputs(tmp_path):
-    from evopt.experiments.tiny_case_figures import main
+    from milp_ev_opt.experiments.tiny_case_figures import main
     main(out_dir=tmp_path)
     expected = [
         "soc_trajectories.pdf",

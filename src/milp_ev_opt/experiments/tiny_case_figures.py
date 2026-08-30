@@ -10,14 +10,14 @@ import pandas as pd
 from pyomo.environ import value
 from pyomo.opt import SolverStatus, TerminationCondition
 
-from evopt.analysis.utils import (
+from milp_ev_opt.analysis.utils import (
     apply_pub_style,
     colorblind_palette,
     save_figure,
 )
-from evopt.experiments.run_tiny_cost_case import _DATA
-from evopt.optimization.model import build_ev_lp_model
-from evopt.optimization.solver import solve
+from milp_ev_opt.experiments.run_tiny_cost_case import _DATA
+from milp_ev_opt.optimization.model import build_ev_lp_model
+from milp_ev_opt.optimization.solver import solve
 
 
 @dataclass

@@ -1,5 +1,5 @@
 import pytest
-from evopt.controllers.equal_share import EqualShareController
+from milp_ev_opt.controllers.equal_share import EqualShareController
 
 
 def _make_state(n_cars: int, p_max_w: float = 10_000.0) -> dict:

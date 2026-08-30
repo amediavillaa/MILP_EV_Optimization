@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from evopt.benchmarking.results import ChargaxSimResults, StepRecord
+from milp_ev_opt.benchmarking.results import ChargaxSimResults, StepRecord
 
 
 def save(result: ChargaxSimResults, path: Path) -> None:

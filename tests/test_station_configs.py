@@ -1,6 +1,6 @@
 from chargax import EVSE, ChargingStation, StationBattery
 
-from evopt.experiments.station_configs import build_station_with_battery
+from milp_ev_opt.experiments.station_configs import build_station_with_battery
 
 
 def test_returns_charging_station():

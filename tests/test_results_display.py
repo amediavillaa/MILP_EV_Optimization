@@ -35,7 +35,7 @@ def _sample_df(n_seeds: int = 5) -> pd.DataFrame:
 
 
 # ── utils ──────────────────────────────────────────────────────────────────
-from evopt.analysis.utils import (
+from milp_ev_opt.analysis.utils import (
     extract_horizon, format_experiment_id, ci95, colorblind_palette,
 )
 
@@ -78,7 +78,7 @@ def test_format_experiment_id_basic():
     assert "p3_6" in eid
     assert "h1_6" in eid
 
-from evopt.analysis.utils import save_metadata
+from milp_ev_opt.analysis.utils import save_metadata
 
 def test_save_metadata_contains_keys(tmp_path):
     cfg = {
@@ -97,7 +97,7 @@ def test_save_metadata_contains_keys(tmp_path):
 
 
 # ── loader ─────────────────────────────────────────────────────────────────
-from evopt.analysis.loader import load_results, clean_results, add_derived_metrics
+from milp_ev_opt.analysis.loader import load_results, clean_results, add_derived_metrics
 
 def test_load_results_csv(tmp_path):
     df = _sample_df()
@@ -171,7 +171,7 @@ def test_profit_per_compute_not_inf():
 # ── tables ─────────────────────────────────────────────────────────────────
 import matplotlib
 matplotlib.use("Agg")
-from evopt.analysis.tables import (
+from milp_ev_opt.analysis.tables import (
     make_full_table, make_cross_port_table, make_best_controller_table,
     make_compute_table, make_efficiency_table, make_tradeoff_table,
     make_robustness_table,
@@ -218,7 +218,7 @@ def test_make_robustness_table(tmp_path):
 
 
 # ── plots (profit charts) ───────────────────────────────────────────────────
-from evopt.analysis.plots import (
+from milp_ev_opt.analysis.plots import (
     plot_profit_by_controller,
     plot_profit_vs_horizon,
     plot_compute_vs_horizon,
@@ -244,7 +244,7 @@ def test_plot_compute_vs_horizon(tmp_path):
     _png_nonempty(tmp_path / "compute_vs_horizon.png")
 
 # ── plots (distribution + scatter) ─────────────────────────────────────────
-from evopt.analysis.plots import (
+from milp_ev_opt.analysis.plots import (
     plot_profit_boxplot, plot_profit_violin, plot_compute_boxplot,
     plot_tradeoff_scatter, plot_pareto_frontier,
 )
@@ -270,7 +270,7 @@ def test_plot_pareto_frontier(tmp_path):
     _png_nonempty(tmp_path / "pareto_frontier.png")
 
 # ── plot_horizon_comparison ─────────────────────────────────────────────────
-from evopt.analysis.plots import plot_horizon_comparison
+from milp_ev_opt.analysis.plots import plot_horizon_comparison
 
 
 def test_plot_horizon_comparison_creates_png(tmp_path):
@@ -294,7 +294,7 @@ def test_plot_horizon_comparison_handles_missing_step_ms(tmp_path):
 
 
 # ── plots (heatmaps + scaling) ──────────────────────────────────────────────
-from evopt.analysis.plots import (
+from milp_ev_opt.analysis.plots import (
     plot_correlation_heatmap, plot_profit_heatmap,
     plot_scaling_compute, plot_scaling_profit, plot_scaling_served_customers,
 )
@@ -320,14 +320,14 @@ def test_plot_scaling_served_customers(tmp_path):
     _png_nonempty(tmp_path / "scaling_served_customers.png")
 
 # ── plots (radar chart) ─────────────────────────────────────────────────────
-from evopt.analysis.plots import plot_radar
+from milp_ev_opt.analysis.plots import plot_radar
 
 def test_plot_radar(tmp_path):
     plot_radar(_plot_df(), tmp_path)
     _png_nonempty(tmp_path / "radar.png")
 
 # ── correlation ─────────────────────────────────────────────────────────────
-from evopt.analysis.correlation import (
+from milp_ev_opt.analysis.correlation import (
     compute_correlation, save_correlation_csv, summarise_correlations,
 )
 
@@ -356,7 +356,7 @@ def test_summarise_correlations_markdown(tmp_path):
 
 
 # ── stats ───────────────────────────────────────────────────────────────────
-from evopt.analysis.stats import (
+from milp_ev_opt.analysis.stats import (
     compare_controllers, compare_all_controllers,
     save_significance_csv, save_significance_summary,
 )
@@ -438,7 +438,7 @@ def test_save_significance_summary(tmp_path):
 
 
 # ── report ──────────────────────────────────────────────────────────────────
-from evopt.analysis.report import write_markdown_report, write_html_report
+from milp_ev_opt.analysis.report import write_markdown_report, write_html_report
 
 def _make_tables(df, tmp_path):
     return {
@@ -498,7 +498,7 @@ def test_default_output_dir(tmp_path):
     csv_path = tmp_path / "bench.csv"
     df.to_csv(csv_path, index=False)
     result = subprocess.run(
-        [sys.executable, "-m", "evopt.analysis", "--input", str(csv_path)],
+        [sys.executable, "-m", "milp_ev_opt.analysis", "--input", str(csv_path)],
         capture_output=True, text=True,
     )
     assert result.returncode == 0, result.stderr
@@ -510,7 +510,7 @@ def test_explicit_output_dir(tmp_path):
     df.to_csv(csv_path, index=False)
     out_dir = tmp_path / "out"
     result = subprocess.run(
-        [sys.executable, "-m", "evopt.analysis",
+        [sys.executable, "-m", "milp_ev_opt.analysis",
          "--input", str(csv_path), "--output", str(out_dir)],
         capture_output=True, text=True,
     )
@@ -541,7 +541,7 @@ def _milp_df(n_seeds: int = 3) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-from evopt.analysis.plots import _horizon_agg
+from milp_ev_opt.analysis.plots import _horizon_agg
 
 
 def test_horizon_agg_returns_expected_columns():
@@ -576,7 +576,7 @@ def test_horizon_agg_returns_empty_for_missing_metric():
 
 
 # ── plot_horizon_full ───────────────────────────────────────────────────────
-from evopt.analysis.plots import plot_horizon_full
+from milp_ev_opt.analysis.plots import plot_horizon_full
 
 
 def test_plot_horizon_full_creates_png(tmp_path):
@@ -619,7 +619,7 @@ def test_pipeline_generates_horizon_figures(tmp_path):
 
     out_dir = tmp_path / "out"
     result = subprocess.run(
-        [sys.executable, "-m", "evopt.analysis",
+        [sys.executable, "-m", "milp_ev_opt.analysis",
          "--input", str(csv_path), "--output", str(out_dir), "--no-radar"],
         capture_output=True, text=True,
     )

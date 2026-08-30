@@ -68,7 +68,7 @@ translates LP-computed continuous currents back into discrete Chargax action lev
 ```
 MILP_EV_Optimization/
 │
-├── src/evopt/                        — main Python package
+├── src/milp_ev_opt/                        — main Python package
 │   │
 │   ├── optimization/                 — LP model construction
 │   │   ├── model.py                  — build_ev_lp_model (offline), build_rolling_model (MPC)
@@ -100,7 +100,7 @@ MILP_EV_Optimization/
 │   │   └── station_configs.py        — Chargax station factory functions
 │   │
 │   ├── analysis/                     — post-processing and visualisation
-│   │   ├── __main__.py               — CLI entry point (python -m evopt.analysis)
+│   │   ├── __main__.py               — CLI entry point (python -m milp_ev_opt.analysis)
 │   │   ├── loader.py                 — CSV loader, cleaning, gap_to_best correction
 │   │   ├── utils.py                  — CI computation, horizon extraction, metadata
 │   │   ├── stats.py                  — paired t-test, Wilcoxon, paired Cohen's d
@@ -484,7 +484,7 @@ and Python version for full reproducibility.
 
 ## 10. Analysis Pipeline
 
-The `evopt.analysis` package (run via `python -m evopt.analysis <input.csv>`) produces:
+The `milp_ev_opt.analysis` package (run via `python -m milp_ev_opt.analysis <input.csv>`) produces:
 
 - `table_full.csv` — mean ± std ± 95% CI for all metrics, all controller/port combos
 - `table_best.csv` — best controller per port configuration
@@ -613,7 +613,7 @@ to quantify the value of model-based optimisation relative to simple heuristics.
 ### 13.1 Fixed-Tariff Experiment
 
 ```bash
-python -m evopt.experiments.run_chargax_benchmark \
+python -m milp_ev_opt.experiments.run_chargax_benchmark \
   --ports 3 6 12 \
   --horizons 1 3 6 12 \
   --seeds 30 \
@@ -624,7 +624,7 @@ python -m evopt.experiments.run_chargax_benchmark \
 ### 13.2 Dynamic-Tariff Experiment
 
 ```bash
-python -m evopt.experiments.run_chargax_benchmark \
+python -m milp_ev_opt.experiments.run_chargax_benchmark \
   --ports 3 6 12 \
   --horizons 1 3 6 12 \
   --seeds 30 \
@@ -640,10 +640,10 @@ Python: 3.13.5 | HiGHS via `highspy` | Pyomo | JAX | Chargax
 ### 13.3 Running Analysis
 
 ```bash
-python -m evopt.analysis results/fixed_tariff_30.csv \
+python -m milp_ev_opt.analysis results/fixed_tariff_30.csv \
   --output results/fixed_tariff_30_analysis/
 
-python -m evopt.analysis results/dynamic_tariff_30.csv \
+python -m milp_ev_opt.analysis results/dynamic_tariff_30.csv \
   --output results/dynamic_tariff_30_analysis/
 ```
 

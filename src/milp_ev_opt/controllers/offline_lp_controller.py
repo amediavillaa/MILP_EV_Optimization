@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from evopt.controllers.base_controller import BaseController
-from evopt.optimization.model import build_ev_lp_model
-from evopt.optimization.solver import solve
+from milp_ev_opt.controllers.base_controller import BaseController
+from milp_ev_opt.optimization.model import build_ev_lp_model
+from milp_ev_opt.optimization.solver import solve
 from pyomo.environ import value
 
 

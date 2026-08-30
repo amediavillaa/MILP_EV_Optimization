@@ -1,4 +1,4 @@
-# src/evopt/analysis/stats.py
+# src/milp_ev_opt/analysis/stats.py
 """Paired statistical tests for benchmark controller comparisons.
 
 All tests (paired t-test, Wilcoxon signed-rank, paired Cohen's d) operate on

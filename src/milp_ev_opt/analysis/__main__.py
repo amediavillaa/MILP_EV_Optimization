@@ -1,10 +1,10 @@
-# src/evopt/analysis/__main__.py
+# src/milp_ev_opt/analysis/__main__.py
 """CLI entry point for the EV benchmark analysis pipeline.
 
 Usage:
-    python -m evopt.analysis --input results/benchmark.csv
-    python -m evopt.analysis --input results/benchmark.csv --output results/figures
-    python -m evopt.analysis --input results/benchmark.csv --no-radar
+    python -m milp_ev_opt.analysis --input results/benchmark.csv
+    python -m milp_ev_opt.analysis --input results/benchmark.csv --output results/figures
+    python -m milp_ev_opt.analysis --input results/benchmark.csv --no-radar
 """
 from __future__ import annotations
 
@@ -32,8 +32,8 @@ def main() -> None:
     output_dir = Path(args.output) if args.output else input_path.parent / "analysis"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    from evopt.analysis import correlation, plots, report, stats, tables
-    from evopt.analysis.loader import add_derived_metrics, clean_results, load_results
+    from milp_ev_opt.analysis import correlation, plots, report, stats, tables
+    from milp_ev_opt.analysis.loader import add_derived_metrics, clean_results, load_results
 
     print(f"Loading {input_path} ...")
     df = add_derived_metrics(clean_results(load_results(input_path)))

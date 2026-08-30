@@ -4,19 +4,19 @@ import pytest
 # ── Validation ────────────────────────────────────────────────────────────────
 
 def test_validation_rejects_zero():
-    from evopt.analysis.utils import validate_grid_cap_strain
+    from milp_ev_opt.analysis.utils import validate_grid_cap_strain
     with pytest.raises(ValueError, match="must be in"):
         validate_grid_cap_strain([0.0])
 
 
 def test_validation_rejects_above_one():
-    from evopt.analysis.utils import validate_grid_cap_strain
+    from milp_ev_opt.analysis.utils import validate_grid_cap_strain
     with pytest.raises(ValueError, match="must be in"):
         validate_grid_cap_strain([1.1])
 
 
 def test_validation_accepts_valid():
-    from evopt.analysis.utils import validate_grid_cap_strain
+    from milp_ev_opt.analysis.utils import validate_grid_cap_strain
     validate_grid_cap_strain([1.0])
     validate_grid_cap_strain([0.5])
     validate_grid_cap_strain([1.0, 0.75, 0.5, 0.25])
@@ -25,7 +25,7 @@ def test_validation_accepts_valid():
 # ── Multiplier property ────────────────────────────────────────────────────────
 
 def test_multiplier_applied_to_wrapper():
-    from evopt.env.chargax_wrapper import ChargaxWrapper
+    from milp_ev_opt.env.chargax_wrapper import ChargaxWrapper
     wrapper = ChargaxWrapper(n_ports=3, v=400.0, i_max=32.0, p_max_kw=9.0)
     assert wrapper.P_max_w == pytest.approx(9000.0)
 
@@ -55,7 +55,7 @@ def _make_state(p_max_kw: float) -> dict:
 
 def test_strain_save_path():
     from pathlib import Path
-    from evopt.analysis.utils import strain_save_path
+    from milp_ev_opt.analysis.utils import strain_save_path
 
     result = strain_save_path("results/bench.csv", 0.75)
     assert result == Path("results/bench_s0_75/bench.csv")
@@ -65,7 +65,7 @@ def test_strain_save_path():
 
 
 def test_format_experiment_id_with_strain():
-    from evopt.analysis.utils import format_experiment_id
+    from milp_ev_opt.analysis.utils import format_experiment_id
 
     base = format_experiment_id(ports=[3], horizons=[12], tariff="0.75")
     assert "_s" not in base
@@ -75,7 +75,7 @@ def test_format_experiment_id_with_strain():
 
 
 def test_equal_share_respects_tighter_cap():
-    from evopt.controllers.equal_share import EqualShareController
+    from milp_ev_opt.controllers.equal_share import EqualShareController
     ctrl = EqualShareController()
 
     state_full = _make_state(18.0)   # strain = 1.0  (3 ports × 6 kW)

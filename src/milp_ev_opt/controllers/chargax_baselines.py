@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from evopt.controllers.base_controller import BaseController
+from milp_ev_opt.controllers.base_controller import BaseController
 
 
 class MaxChargeController(BaseController):

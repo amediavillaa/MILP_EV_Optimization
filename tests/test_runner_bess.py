@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 def _make_mock_runner(bess_net_amps: float, p_buy: float = 0.30,
                       delta_t: float = 5 / 60.0):
     """Build a mocked BenchmarkRunner for a single-step episode with no EVs."""
-    from evopt.benchmarking.runner import BenchmarkRunner
+    from milp_ev_opt.benchmarking.runner import BenchmarkRunner
 
     J = 2
     t = 0
@@ -95,7 +95,7 @@ def test_runner_profit_delta_is_step_profit():
 
 def test_runner_no_bess_step_cost_unaffected():
     """When wrapper.v_bess is None, BESS actions should not change step_cost."""
-    from evopt.benchmarking.runner import BenchmarkRunner
+    from milp_ev_opt.benchmarking.runner import BenchmarkRunner
 
     J = 2
     t = 0

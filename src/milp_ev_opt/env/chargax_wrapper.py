@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import jax.numpy as jnp
 
-from evopt.env.action_mapper import discretize_amps
+from milp_ev_opt.env.action_mapper import discretize_amps
 
 
 class ChargaxWrapper:

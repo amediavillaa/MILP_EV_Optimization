@@ -1,5 +1,5 @@
 import pytest
-from evopt.env.chargax_wrapper import ChargaxWrapper
+from milp_ev_opt.env.chargax_wrapper import ChargaxWrapper
 
 
 class MockEVSE:
