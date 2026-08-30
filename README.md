@@ -58,8 +58,7 @@ src/milp_ev_opt/
 │   ├── model.py        build_ev_lp_model  (offline)  /  build_rolling_model (MPC step)
 │   ├── objective.py    profit-maximisation objective with BESS eta model
 │   ├── constraints.py  C1–C11 constraint sets for offline and rolling models
-│   ├── solver.py       thin Pyomo solver wrapper
-│   └── variables.py    legacy MILP variable declarations (unused)
+│   └── solver.py       thin Pyomo solver wrapper
 │
 ├── controllers/        controller interface and implementations
 │   ├── base_controller.py   BaseController ABC
