@@ -212,3 +212,9 @@ __marimo__/
 # Scratch/export files
 *_FINAL.txt
 objective_extracted.txt
+
+# Generated experiment outputs
+results/
+
+# Claude Code superpowers session state
+.superpowers/
