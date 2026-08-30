@@ -25,4 +25,4 @@ dev = [
 where = ["src"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "src/evopt/tests"]
+testpaths = ["tests"]

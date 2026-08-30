@@ -85,8 +85,7 @@ src/evopt/
 └── metrics/
     └── evaluation.py   compute_summary_metrics — mean ± std across seeds
 
-tests/                  canonical test suite (91 tests total)
-src/evopt/tests/        legacy test suite (also 91 tests, run by default)
+tests/                  full test suite
 ```
 
 ---
@@ -221,17 +220,12 @@ python -m evopt.experiments.run_horizon_comparison --seeds 5 --output results/ho
 ## Tests
 
 ```bash
-# Run full suite (91 tests in tests/ + 91 in src/evopt/tests/)
+# Run full suite
 pytest
-
-# Canonical tests only
-pytest tests/
 
 # A single file
 pytest tests/test_grid_cap_load.py -v
 ```
-
-Both test directories are included in `pyproject.toml`'s `testpaths`.
 
 ---
 

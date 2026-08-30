@@ -1,5 +1,11 @@
 """Tests for compute_summary_metrics."""
+import tempfile
+from pathlib import Path
+
+import pandas as pd
 import pytest
+
+from evopt.analysis.plots import plot_optimality_gap
 from evopt.benchmarking.results import ChargaxSimResults
 from evopt.metrics.evaluation import compute_summary_metrics
 
@@ -53,3 +59,16 @@ def test_returns_mean_soc_fulfillment_not_departure_soc():
         "old name 'mean_soc_at_departure'."
     )
     assert summary["lp"]["mean_soc_fulfillment"] == pytest.approx(0.80)
+
+
+def test_plot_optimality_gap_creates_file():
+    df = pd.DataFrame({
+        "ports":          [3, 3, 6, 6],
+        "horizon":        [1, 12, 1, 12],
+        "optimality_gap": [0.05, 0.02, 0.04, 0.01],
+        "seed":           [0, 0, 0, 0],
+    })
+    with tempfile.TemporaryDirectory() as tmp:
+        plot_optimality_gap(df, Path(tmp))
+        files = list(Path(tmp).glob("*.png")) + list(Path(tmp).glob("*.pdf"))
+        assert len(files) >= 1
