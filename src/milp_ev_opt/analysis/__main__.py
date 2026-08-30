@@ -9,11 +9,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
-
-import matplotlib
-matplotlib.use("Agg")
 
 
 def main() -> None:
@@ -31,6 +27,9 @@ def main() -> None:
     input_path = Path(args.input)
     output_dir = Path(args.output) if args.output else input_path.parent / "analysis"
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    import matplotlib
+    matplotlib.use("Agg")
 
     from milp_ev_opt.analysis import correlation, plots, report, stats, tables
     from milp_ev_opt.analysis.loader import add_derived_metrics, clean_results, load_results
